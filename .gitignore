@@ -1,0 +1,6 @@
+# Arquivos temporários do Office (criados pelo Excel ao abrir planilhas)
+~$*
+
+# Sistema
+.DS_Store
+Thumbs.db

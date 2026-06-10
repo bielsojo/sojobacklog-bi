@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SojoBacklog BI — Dashboard</title>
+    <meta name="description" content="Dashboard BI para análise do backlog de chamados GLPI.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        :root{
+            --bg-primary:#06080d;--bg-secondary:#0d1117;--bg-card:#131720;
+            --bg-card-hover:#1a1f2e;--border:rgba(99,102,241,.12);
+            --border-hover:rgba(99,102,241,.3);--text-primary:#e6edf3;
+            --text-secondary:#8b949e;--text-muted:#545d68;
+            --accent:#6366f1;--accent-glow:rgba(99,102,241,.25);
+            --success:#22c55e;--success-bg:rgba(34,197,94,.1);
+            --warning:#f59e0b;--warning-bg:rgba(245,158,11,.1);
+            --danger:#ef4444;--danger-bg:rgba(239,68,68,.1);
+            --info:#3b82f6;--info-bg:rgba(59,130,246,.1);
+            --purple:#a855f7;--pink:#ec4899;--cyan:#06b6d4;
+            --radius:16px;--radius-sm:10px;
+            --shadow:0 4px 24px rgba(0,0,0,.4);
+            --transition:all .3s cubic-bezier(.4,0,.2,1);
+        }
+        body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;overflow-x:hidden;line-height:1.5}
+        body::before{content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(ellipse at 20% 20%,rgba(99,102,241,.06) 0%,transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(168,85,247,.04) 0%,transparent 50%),radial-gradient(ellipse at 50% 50%,rgba(6,182,212,.03) 0%,transparent 60%);z-index:-1;animation:ambientShift 20s ease-in-out infinite alternate}
+        @keyframes ambientShift{0%{transform:translate(0,0) rotate(0deg)}100%{transform:translate(-3%,-3%) rotate(3deg)}}
+        ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--text-muted);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:var(--text-secondary)}
+
+        /* HEADER */
+        .header{padding:24px 40px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;border-bottom:1px solid var(--border);backdrop-filter:blur(20px);position:sticky;top:0;z-index:100;background:rgba(6,8,13,.85)}
+        .header-left{display:flex;align-items:center;gap:16px}
+        .logo{width:42px;height:42px;background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;color:#fff;box-shadow:0 0 20px var(--accent-glow)}
+        .header h1{font-size:21px;font-weight:700;letter-spacing:-.5px}
+        .header h1 span{color:var(--accent)}
+        .header-sub{font-size:11px;color:var(--text-muted);font-weight:400}
+        .header-right{display:flex;align-items:center;gap:12px}
+        .badge-live{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--success);background:var(--success-bg);padding:5px 12px;border-radius:20px;border:1px solid rgba(34,197,94,.2)}
+        .badge-live::before{content:'';width:7px;height:7px;background:var(--success);border-radius:50%;animation:pulse 2s infinite}
+        @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+        .upload-btn{background:linear-gradient(135deg,var(--accent),var(--purple));border:none;color:#fff;padding:9px 18px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;transition:var(--transition);box-shadow:0 0 20px var(--accent-glow)}
+        .upload-btn:hover{transform:translateY(-2px);box-shadow:0 6px 30px var(--accent-glow)}
+        #csv-input{display:none}
+
+        /* TABS */
+        .tab-bar{display:flex;gap:0;padding:0 40px;border-bottom:1px solid var(--border);background:rgba(6,8,13,.5);backdrop-filter:blur(10px)}
+        .tab-btn{padding:12px 24px;font-size:13px;font-weight:600;color:var(--text-muted);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;transition:var(--transition);display:flex;align-items:center;gap:8px}
+        .tab-btn:hover{color:var(--text-secondary)}
+        .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+        .tab-btn .tab-icon{font-size:15px}
+        .tab-content{display:none}
+        .tab-content.active{display:block}
+
+        /* FILTERS */
+        .filters-bar{padding:14px 40px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;border-bottom:1px solid var(--border)}
+        .filter-group{display:flex;align-items:center;gap:6px}
+        .filter-group label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+        .filter-select,.filter-input{background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);padding:7px 12px;border-radius:8px;font-size:12px;font-family:inherit;outline:none;transition:var(--transition);min-width:140px}
+        .filter-select:focus,.filter-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+        .filter-select option{background:var(--bg-card)}
+        .filter-reset{background:transparent;border:1px solid var(--border);color:var(--text-secondary);padding:7px 14px;border-radius:8px;font-size:12px;font-family:inherit;cursor:pointer;transition:var(--transition);margin-left:auto}
+        .filter-reset:hover{border-color:var(--danger);color:var(--danger)}
+
+        /* CROSS-FILTER CHIP */
+        .crossfilter-bar{padding:8px 40px;display:none;align-items:center;gap:8px;background:rgba(99,102,241,.06);border-bottom:1px solid var(--border)}
+        .crossfilter-bar.active{display:flex}
+        .cf-label{font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+        .cf-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:var(--accent);color:#fff;border-radius:20px;font-size:11px;font-weight:600;animation:chipIn .3s ease}
+        @keyframes chipIn{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+        .cf-clear{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:14px;font-family:inherit;line-height:1;padding:0 2px;transition:var(--transition)}
+        .cf-clear:hover{color:#fff}
+
+        /* MAIN */
+        .dashboard{padding:24px 40px 60px}
+
+        /* KPI */
+        .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:14px;margin-bottom:22px}
+        .kpi-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;position:relative;overflow:hidden;transition:var(--transition);cursor:default}
+        .kpi-card.interactive{cursor:pointer}
+        .kpi-card.interactive:hover{border-color:var(--accent);transform:translateY(-4px);box-shadow:0 6px 20px var(--accent-glow)}
+        .kpi-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:3px;border-radius:var(--radius) var(--radius) 0 0}
+        .kpi-card.blue::before{background:linear-gradient(90deg,var(--info),var(--cyan))}
+        .kpi-card.red::before{background:linear-gradient(90deg,var(--danger),var(--pink))}
+        .kpi-card.green::before{background:linear-gradient(90deg,var(--success),#4ade80)}
+        .kpi-card.yellow::before{background:linear-gradient(90deg,var(--warning),#fbbf24)}
+        .kpi-card.purple::before{background:linear-gradient(90deg,var(--purple),var(--pink))}
+        .kpi-card.indigo::before{background:linear-gradient(90deg,var(--accent),var(--info))}
+        .kpi-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:12px}
+        .kpi-card.blue .kpi-icon{background:var(--info-bg)}.kpi-card.red .kpi-icon{background:var(--danger-bg)}.kpi-card.green .kpi-icon{background:var(--success-bg)}.kpi-card.yellow .kpi-icon{background:var(--warning-bg)}.kpi-card.purple .kpi-icon{background:rgba(168,85,247,.1)}.kpi-card.indigo .kpi-icon{background:rgba(99,102,241,.1)}
+        .kpi-value{font-size:26px;font-weight:800;letter-spacing:-1px;line-height:1.1;margin-bottom:3px}
+        .kpi-label{font-size:11px;color:var(--text-secondary);font-weight:500}
+        .kpi-sub{font-size:10px;margin-top:7px;padding:3px 8px;border-radius:6px;display:inline-block;font-weight:600}
+        .kpi-sub.bad{background:var(--danger-bg);color:var(--danger)}.kpi-sub.good{background:var(--success-bg);color:var(--success)}.kpi-sub.warn{background:var(--warning-bg);color:var(--warning)}.kpi-sub.info{background:var(--info-bg);color:var(--info)}
+
+        /* CHARTS */
+        .charts-grid{display:grid;gap:14px;margin-bottom:22px}
+        .charts-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+        .charts-grid.cols-2{grid-template-columns:1fr 1fr}
+        .charts-grid.cols-1{grid-template-columns:1fr}
+        .chart-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;transition:var(--transition)}
+        .chart-card:hover{border-color:var(--border-hover)}
+        .chart-title{font-size:13px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:8px}
+        .chart-title .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+        .chart-subtitle{font-size:10px;color:var(--text-muted);margin-bottom:18px}
+        .chart-container{position:relative;width:100%}
+        .chart-container.doughnut{max-width:240px;margin:0 auto}
+
+        /* INSIGHTS TAB */
+        .insights-page{padding:24px 40px 60px}
+        .insights-header{margin-bottom:24px}
+        .insights-header h2{font-size:22px;font-weight:800;margin-bottom:4px}
+        .insights-header p{font-size:13px;color:var(--text-secondary)}
+        .insights-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+        .insight-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;transition:var(--transition);position:relative;overflow:hidden}
+        .insight-card:hover{border-color:var(--border-hover);transform:translateY(-2px);box-shadow:var(--shadow)}
+        .insight-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;border-radius:var(--radius) 0 0 var(--radius)}
+        .insight-card.critical::before{background:var(--danger)}
+        .insight-card.warning::before{background:var(--warning)}
+        .insight-card.positive::before{background:var(--success)}
+        .insight-card.info::before{background:var(--info)}
+        .insight-card.neutral::before{background:var(--purple)}
+        .insight-icon{font-size:28px;margin-bottom:12px}
+        .insight-title{font-size:14px;font-weight:700;margin-bottom:8px;line-height:1.3}
+        .insight-body{font-size:12px;color:var(--text-secondary);line-height:1.7}
+        .insight-body strong{color:var(--text-primary)}
+        .insight-metric{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700;margin:4px 4px 4px 0}
+        .insight-metric.red{background:var(--danger-bg);color:var(--danger)}
+        .insight-metric.yellow{background:var(--warning-bg);color:var(--warning)}
+        .insight-metric.green{background:var(--success-bg);color:var(--success)}
+        .insight-metric.blue{background:var(--info-bg);color:var(--info)}
+        .insight-metric.purple{background:rgba(168,85,247,.1);color:var(--purple)}
+        .insight-bar{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+        .insight-bar-item{display:flex;align-items:center;gap:10px;font-size:11px}
+        .insight-bar-label{min-width:120px;color:var(--text-secondary);text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+        .insight-bar-track{flex:1;height:6px;background:rgba(255,255,255,.05);border-radius:10px;overflow:hidden}
+        .insight-bar-fill{height:100%;border-radius:10px;transition:width .6s ease}
+        .insight-bar-val{min-width:36px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+        .insight-divider{border:none;border-top:1px solid var(--border);margin:16px 0}
+        .insight-reco{margin-top:12px;padding:10px 14px;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.15);border-radius:var(--radius-sm);font-size:11px;color:var(--text-secondary);line-height:1.6}
+        .insight-reco strong{color:var(--accent)}
+
+        /* TABLE */
+        .table-section{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+        .table-header{padding:18px 22px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+        .table-header h3{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+        .table-count{font-size:11px;padding:3px 10px;background:var(--danger-bg);color:var(--danger);border-radius:12px;font-weight:700}
+        .table-search{background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-primary);padding:7px 14px;border-radius:8px;font-size:12px;font-family:inherit;outline:none;width:220px;transition:var(--transition)}
+        .table-search:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+        .table-wrap{overflow-x:auto;max-height:500px;overflow-y:auto}
+        table{width:100%;border-collapse:collapse;font-size:12px}
+        thead{position:sticky;top:0;z-index:10}
+        th{background:var(--bg-secondary);padding:11px 14px;text-align:left;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);white-space:nowrap;cursor:pointer;user-select:none;border-bottom:1px solid var(--border);transition:var(--transition)}
+        th:hover{color:var(--accent)}
+        th.sorted-asc::after{content:' ▲';color:var(--accent)}
+        th.sorted-desc::after{content:' ▼';color:var(--accent)}
+        td{padding:9px 14px;border-bottom:1px solid rgba(42,45,58,.3);white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis}
+        tr{transition:var(--transition)}tr:hover td{background:rgba(99,102,241,.04)}
+        .status-badge{display:inline-block;padding:3px 9px;border-radius:6px;font-size:10px;font-weight:600;white-space:nowrap}
+        .status-badge.atribuido{background:var(--info-bg);color:var(--info)}.status-badge.pendente{background:var(--warning-bg);color:var(--warning)}.status-badge.solucionado{background:var(--success-bg);color:var(--success)}.status-badge.novo{background:rgba(168,85,247,.1);color:var(--purple)}.status-badge.planejado{background:rgba(6,182,212,.1);color:var(--cyan)}
+        .prio-badge{display:inline-block;padding:3px 9px;border-radius:6px;font-size:10px;font-weight:600}
+        .prio-badge.critica{background:var(--danger-bg);color:var(--danger)}.prio-badge.alta{background:var(--warning-bg);color:var(--warning)}.prio-badge.media{background:rgba(99,102,241,.08);color:var(--text-secondary)}.prio-badge.baixa{background:rgba(34,197,94,.08);color:var(--text-muted)}
+        .days-cell{font-weight:700;font-variant-numeric:tabular-nums}
+        .days-cell.critical{color:var(--danger)}.days-cell.warning{color:var(--warning)}.days-cell.ok{color:var(--text-secondary)}
+        .table-footer{padding:12px 22px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);font-size:12px;color:var(--text-secondary)}
+        .pagination{display:flex;gap:4px}
+        .pagination button{background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-secondary);width:30px;height:30px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;transition:var(--transition)}
+        .pagination button:hover{border-color:var(--accent);color:var(--accent)}.pagination button.active{background:var(--accent);color:#fff;border-color:var(--accent)}.pagination button:disabled{opacity:.3;cursor:default}
+
+        /* LOADING */
+        .loading-screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-primary);z-index:1000;transition:opacity .5s,visibility .5s}
+        .loading-screen.hidden{opacity:0;visibility:hidden;pointer-events:none}
+        .loading-spinner{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .loading-text{margin-top:14px;color:var(--text-secondary);font-size:13px}
+
+        .no-data{text-align:center;padding:80px 40px;color:var(--text-muted)}
+        .no-data-icon{font-size:48px;margin-bottom:16px}.no-data h2{font-size:20px;margin-bottom:8px;color:var(--text-secondary)}.no-data p{font-size:13px;max-width:400px;margin:0 auto 20px}
+        .hidden{display:none!important}
+        .export-btn{background:rgba(99,102,241,.1);border:1px solid var(--accent);color:var(--accent);padding:7px 14px;border-radius:8px;font-size:12px;font-family:inherit;font-weight:600;cursor:pointer;transition:var(--transition);display:flex;align-items:center;gap:6px}
+        .export-btn:hover{background:var(--accent);color:#fff;box-shadow:0 0 12px var(--accent-glow);transform:translateY(-1px)}
+
+        @media(max-width:1200px){.charts-grid.cols-3{grid-template-columns:1fr 1fr}}
+        @media(max-width:900px){.header,.filters-bar,.dashboard,.insights-page,.tab-bar,.crossfilter-bar{padding-left:20px;padding-right:20px}.charts-grid.cols-3,.charts-grid.cols-2{grid-template-columns:1fr}.kpi-row{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}.insights-grid{grid-template-columns:1fr}}
+        @media(max-width:600px){.header h1{font-size:17px}.kpi-row{grid-template-columns:1fr 1fr}.kpi-value{font-size:21px}}
+
+        /* DROPDOWN MULTISELECT */
+        .dropdown-multiselect{position:relative;display:inline-block}
+        .dropdown-btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);padding:7px 12px;border-radius:8px;font-size:12px;font-family:inherit;cursor:pointer;transition:var(--transition);min-width:160px;text-align:left;display:flex;justify-content:space-between;align-items:center}
+        .dropdown-btn::after{content:'▼';font-size:8px;margin-left:8px;color:var(--text-muted)}
+        .dropdown-btn:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+        .dropdown-menu{display:none;position:absolute;top:100%;left:0;z-index:200;min-width:220px;max-height:280px;overflow-y:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);padding:8px;margin-top:4px}
+        .dropdown-menu.show{display:block}
+        .dropdown-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;color:var(--text-secondary);cursor:pointer;font-size:12px;user-select:none;width:100%}
+        .dropdown-item:hover{background:var(--bg-card-hover);color:var(--text-primary)}
+        .dropdown-item input[type="checkbox"]{accent-color:var(--accent);cursor:pointer}
+        .dropdown-divider{height:1px;background:var(--border);margin:6px 0}
+        .dropdown-actions{display:flex;justify-content:space-between;padding:2px 4px 6px}
+        .dropdown-action-btn{background:none;border:none;color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;padding:4px 8px;text-align:left;transition:var(--transition)}
+        .dropdown-action-btn:hover{color:var(--text-primary)}
+        .copy-feedback{position:absolute;background:var(--success);color:#fff;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;pointer-events:none;z-index:1000;box-shadow:var(--shadow);animation:fadeInOut 1.5s forwards}
+        @keyframes fadeInOut{0%{opacity:0;transform:translateY(10px)}15%{opacity:1;transform:translateY(0)}85%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-10px)}}
+    </style>
+</head>
+<body>
+
+<div class="loading-screen hidden" id="loading-screen"><div class="loading-spinner"></div><div class="loading-text">Processando dados...</div></div>
+
+<!-- HEADER -->
+<header class="header">
+    <div class="header-left">
+        <div class="logo">SB</div>
+        <div>
+            <h1>Sojo<span>Backlog</span></h1>
+            <div class="header-sub" id="header-sub">SojoBacklog — Carregue um CSV para iniciar</div>
+        </div>
+    </div>
+</header>
+
+<!-- TABS -->
+<div class="tab-bar" id="tab-bar">
+    <button class="tab-btn active" data-tab="backlog"><span class="tab-icon">📊</span> Backlog de Chamados</button>
+    <button class="tab-btn" data-tab="buscador"><span class="tab-icon">🔍</span> Buscador de Equipamentos</button>
+</div>
+
+<!-- ======= BACKLOG TAB ======= -->
+<div class="tab-content active" id="tab-backlog">
+    <!-- NO DATA -->
+    <div class="no-data" id="no-data" style="padding: 80px 20px;">
+        <div class="no-data-icon">📊</div>
+        <h2>Nenhum backlog de chamados carregado</h2>
+        <p>Clique abaixo para importar o arquivo CSV do GLPI e visualizar o dashboard.</p>
+        <label class="upload-btn" for="csv-input" style="margin-top: 14px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">📂 Carregar CSV Backlog</label>
+        <input type="file" id="csv-input" accept=".csv" style="display: none">
+    </div>
+    
+    <!-- BACKLOG CONTENT -->
+    <div id="backlog-content" class="hidden">
+        <!-- CROSS-FILTER BAR -->
+        <div class="crossfilter-bar" id="crossfilter-bar">
+            <span class="cf-label">Filtros ativos:</span>
+            <div id="cf-chips-container" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; flex: 1"></div>
+            <button class="filter-reset" id="cf-clear-all" style="margin-left:auto; padding:4px 10px; font-size:11px; border-radius:6px">✕ Limpar Todos</button>
+        </div>
+
+        <!-- FILTERS -->
+        <div class="filters-bar" id="filters-bar" style="padding: 14px 40px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-bottom: 1px solid var(--border);">
+            <div class="filter-group"><label>Status</label><select class="filter-select" id="filter-status"><option value="">Todos</option></select></div>
+            <div class="filter-group"><label>Prioridade</label><select class="filter-select" id="filter-priority"><option value="">Todas</option></select></div>
+            <div class="filter-group"><label>Técnico</label><select class="filter-select" id="filter-tech"><option value="">Todos</option></select></div>
+            <div class="filter-group"><label>Requerente</label><select class="filter-select" id="filter-requester"><option value="">Todos</option></select></div>
+            <div class="filter-group"><label>Dias Parado</label><input type="number" class="filter-input" id="filter-stale-days" min="0" placeholder="Mínimo de dias" style="min-width:120px"></div>
+            <div class="filter-group"><label>De</label><input type="date" class="filter-input" id="filter-from" style="min-width:130px"></div>
+            <div class="filter-group"><label>Até</label><input type="date" class="filter-input" id="filter-to" style="min-width:130px"></div>
+            <div style="margin-left: auto; display: flex; gap: 8px;">
+                <label class="upload-btn" for="csv-input" style="margin: 0; padding: 7px 14px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">🔄 Atualizar CSV</label>
+                <button class="filter-reset" id="db-backlog-reset" style="border-color: var(--warning); color: var(--warning);" title="Limpa os dados salvos no navegador e tenta ler o backlog.csv da pasta">🗑️ Limpar Salvo</button>
+                <button class="filter-reset" id="filter-reset">✕ Limpar</button>
+            </div>
+        </div>
+
+        <!-- Sub-tab Bar -->
+        <div class="tab-bar" style="border-bottom: 1px solid var(--border); background: none; backdrop-filter: none; padding: 10px 40px 0;">
+            <button class="tab-btn active subtab-btn" data-subtab="dashboard" style="padding: 8px 16px; font-size: 12px;"><span class="tab-icon">📈</span> Métricas</button>
+            <button class="tab-btn subtab-btn" data-subtab="insights" style="padding: 8px 16px; font-size: 12px;"><span class="tab-icon">💡</span> Insights Automáticos</button>
+        </div>
+
+        <!-- Sub-tab Dashboard Content -->
+        <div class="subtab-content active" id="subtab-dashboard">
+            <div class="dashboard" id="dashboard-content">
+    <div class="kpi-row" id="kpi-row"></div>
+    <div class="charts-grid cols-3">
+        <div class="chart-card"><div class="chart-title"><span class="dot" style="background:var(--info)"></span> Status</div><div class="chart-subtitle">Clique em um segmento para filtrar</div><div class="chart-container doughnut"><canvas id="chart-status"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title"><span class="dot" style="background:var(--warning)"></span> Prioridade</div><div class="chart-subtitle">Clique em um segmento para filtrar</div><div class="chart-container doughnut"><canvas id="chart-priority"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title"><span class="dot" style="background:var(--danger)"></span> Saúde do Backlog</div><div class="chart-subtitle">Solucionados vs Ativos vs Parados</div><div class="chart-container doughnut"><canvas id="chart-health"></canvas></div></div>
+    </div>
+    <div class="charts-grid cols-2">
+        <div class="chart-card"><div class="chart-title"><span class="dot" style="background:var(--purple)"></span> Chamados por Técnico</div><div class="chart-subtitle">Clique em uma barra para filtrar</div><div class="chart-container" style="height:330px"><canvas id="chart-techs"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title"><span class="dot" style="background:var(--purple)"></span> Top Requerentes</div><div class="chart-subtitle">Clique em uma barra para filtrar</div><div class="chart-container" style="height:330px"><canvas id="chart-requesters"></canvas></div></div>
+    </div>
+    <div class="charts-grid cols-2">
+        <div class="chart-card"><div class="chart-title"><span class="dot" style="background:var(--pink)"></span> Top Categorias</div><div class="chart-subtitle">Clique em uma barra para filtrar</div><div class="chart-container" style="height:330px"><canvas id="chart-categories"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title"><span class="dot" style="background:var(--success)"></span> Top Entidades</div><div class="chart-subtitle">Clique em uma barra para filtrar</div><div class="chart-container" style="height:330px"><canvas id="chart-entities"></canvas></div></div>
+    </div>
+    <div class="charts-grid cols-2">
+        <div class="chart-card"><div class="chart-title"><span class="dot" style="background:var(--cyan)"></span> Volume de Abertura por Dia</div><div class="chart-subtitle">Últimos 30 dias com registros</div><div class="chart-container" style="height:330px"><canvas id="chart-timeline"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title"><span class="dot" style="background:var(--danger)"></span> Parados &gt;7d por Técnico</div><div class="chart-subtitle">Distribuição de chamados inativos</div><div class="chart-container" style="height:330px"><canvas id="chart-stale-tech"></canvas></div></div>
+    </div>
+    <div class="table-section" id="table-section">
+        <div class="table-header">
+            <h3 id="table-title">📋 Lista de Chamados <span class="table-count" id="table-count-badge" style="background:var(--info-bg);color:var(--info)">0</span></h3>
+            <div style="display:flex; gap:10px; align-items:center">
+                <button class="export-btn" id="export-csv-btn">📤 Exportar CSV</button>
+                <input type="text" class="table-search" id="table-search" placeholder="Buscar ID, título, técnico, requerente...">
+            </div>
+        </div>
+        <div class="table-wrap"><table><thead><tr>
+            <th data-col="id">ID</th><th data-col="title">Título</th><th data-col="opened">Abertura</th><th data-col="updated">Última Ação</th><th data-col="days">Dias Parado</th><th data-col="status">Status</th><th data-col="tech">Técnico</th><th data-col="requester">Requerente</th><th data-col="priority">Prioridade</th>
+        </tr></thead><tbody id="stale-tbody"></tbody></table></div>
+        <div class="table-footer"><span id="table-info">0 de 0</span><div class="pagination" id="pagination"></div></div>
+    </div>
+        </div> <!-- end .dashboard / #dashboard-content -->
+    </div> <!-- end #subtab-dashboard -->
+
+    <!-- Sub-tab Insights Content -->
+    <div class="subtab-content hidden" id="subtab-insights">
+        <div class="insights-page">
+            <div class="insights-header">
+                <h2>💡 Insights Automáticos</h2>
+                <p>Análise inteligente gerada automaticamente a partir dos seus dados.</p>
+            </div>
+            <div class="insights-grid" id="insights-grid"></div>
+        </div>
+    </div>
+    
+    </div> <!-- end #backlog-content -->
+</div> <!-- end #tab-backlog -->
+
+<!-- ======= BUSCADOR TAB ======= -->
+<div class="tab-content hidden" id="tab-buscador">
+    <div class="filters-bar" style="border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 14px 40px;">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1;">
+            <div class="filter-group">
+                <label>Buscar</label>
+                <input type="text" class="filter-input" id="equip-search" placeholder="Modelo, Cliente, Serial, Localidade..." style="min-width: 240px;">
+            </div>
+            <div class="filter-group">
+                <label>Status</label>
+                <div class="dropdown-multiselect">
+                    <button class="dropdown-btn" type="button" id="equip-status-btn">Status: Todos</button>
+                    <div class="dropdown-menu" id="equip-status-menu" style="min-width: 240px; padding: 10px;">
+                        <input type="text" id="equip-status-search" placeholder="Filtrar status..." style="width: 100%; margin-bottom: 8px; font-size: 11px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); outline: none;">
+                        <div class="dropdown-actions">
+                            <button class="dropdown-action-btn" type="button" onclick="selectAllEquipStatus(true)">Marcar Todos</button>
+                            <button class="dropdown-action-btn" type="button" onclick="selectAllEquipStatus(false)" style="text-align: right;">Desmarcar Todos</button>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <div id="equip-status-list"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>Colunas</label>
+                <div class="dropdown-multiselect">
+                    <button class="dropdown-btn" type="button" id="equip-cols-btn">Colunas</button>
+                    <div class="dropdown-menu" id="equip-cols-menu"></div>
+                </div>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <span id="equip-base-date" style="font-size: 11px; color: var(--text-secondary); font-weight: 500;"></span>
+            <label class="upload-btn" for="equipamentos-input" style="margin: 0; padding: 9px 18px; display: inline-flex; align-items: center; gap: 6px;">📂 Carregar Equipamentos</label>
+            <input type="file" id="equipamentos-input" accept=".xls,.xlsx,.csv" style="display: none">
+            <button class="filter-reset" id="db-equip-reset" style="padding: 9px 14px; border-color: var(--warning); color: var(--warning);" title="Limpa a planilha salva no navegador e tenta ler o equipamentos.xlsx ou equipamentos.csv da pasta">🗑️ Limpar Salvo</button>
+            <button class="export-btn" id="equip-export-btn" disabled>📤 Exportar XLSX</button>
+        </div>
+    </div>
+    
+    <div class="dashboard">
+        <!-- NO EQUIPAMENTOS DATA -->
+        <div class="no-data" id="equip-no-data">
+            <div class="no-data-icon">🔍</div>
+            <h2>Nenhuma planilha de equipamentos carregada</h2>
+            <p>Clique em <strong>"Carregar Equipamentos"</strong> no menu superior para importar a planilha (.xls, .xlsx, .csv).</p>
+        </div>
+
+        <!-- EQUIPAMENTOS TABLE SECTION -->
+        <div class="table-section hidden" id="equip-table-section">
+            <div class="table-header">
+                <h3>📋 Lista de Equipamentos <span class="table-count" id="equip-count-badge" style="background:var(--info-bg);color:var(--info)">0</span></h3>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr id="equip-table-thead-tr">
+                            <!-- Populated dynamically -->
+                        </tr>
+                    </thead>
+                    <tbody id="equip-tbody">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-footer">
+                <span id="equip-table-info">Mostrando 0–0 de 0</span>
+                <div class="pagination" id="equip-pagination"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===========================================================
+let RAW_DATA=[], FILTERED=[], CHARTS={};
+const NOW=new Date(), PAGE_SIZE=50;
+let currentPage=1, staleFiltered=[], tableSortCol='days', tableSortDir='desc';
+let crossFilters = {}; // { field: { value, label } }
+let kpiFilter = null; // null, 'active', 'solved', 'stale', 'pending'
+
+// ===========================================================
+// UTILS
+// ===========================================================
+function clean(s){if(!s)return '';return s.replace(/[\r\n]+/g,' ').trim().replace(/^"|"$/g,'')}
+function parseDate(s){if(!s)return null;const m=s.match(/(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/);if(!m)return null;return new Date(+m[3],+m[2]-1,+m[1],+m[4],+m[5])}
+function daysBetween(a,b){if(!a||!b)return 0;const d1=new Date(a.getFullYear(),a.getMonth(),a.getDate());const d2=new Date(b.getFullYear(),b.getMonth(),b.getDate());return Math.round((d2-d1)/864e5)}
+function fmtDate(d){if(!d)return'—';return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})}
+function statusClass(s){const l=(s||'').toLowerCase();if(l.includes('atribuído'))return'atribuido';if(l.includes('pendente'))return'pendente';if(l.includes('solucionado'))return'solucionado';if(l.includes('planejado'))return'planejado';if(l.includes('novo'))return'novo';return''}
+function prioClass(p){const l=(p||'').toLowerCase();if(l.includes('crit'))return'critica';if(l.includes('alta'))return'alta';if(l.includes('média')||l.includes('media'))return'media';if(l.includes('baixa'))return'baixa';return''}
+function counter(arr,key){const c={};arr.forEach(r=>{const v=r[key]||'(vazio)';c[v]=(c[v]||0)+1});return Object.entries(c).sort((a,b)=>b[1]-a[1])}
+function shortCat(c){if(!c)return'(vazio)';const p=c.split('>').map(s=>s.trim());return p.length>2?p.slice(-2).join(' > '):p.join(' > ')}
+function shortEntity(e){if(!e)return'(vazio)';const p=e.split('>').map(s=>s.trim());return p[p.length-1]||p[0]}
+function parseDuration(s){if(!s||s==='0 segundo')return 0;let h=0;const dm=s.match(/(\d+)\s*dia/);if(dm)h+=+dm[1]*24;const hm=s.match(/(\d+)\s*hora/);if(hm)h+=+hm[1];const mm=s.match(/(\d+)\s*minuto/);if(mm)h+=+mm[1]/60;return h}
+function fmtHours(h){if(h===0)return'0m';const d=Math.floor(h/24),rh=Math.floor(h%24),rm=Math.round((h%1)*60);let s='';if(d)s+=d+'d ';if(rh)s+=rh+'h ';if(rm||!s)s+=rm+'m';return s.trim()}
+function pct(a,b){return b?((a/b)*100).toFixed(1):0}
+
+Chart.defaults.color='#8b949e';Chart.defaults.font.family="'Inter',sans-serif";Chart.defaults.font.size=11;
+Chart.defaults.plugins.legend.labels.boxWidth=12;Chart.defaults.plugins.legend.labels.padding=12;
+Chart.defaults.plugins.legend.labels.usePointStyle=true;Chart.defaults.plugins.legend.labels.pointStyle='rectRounded';
+
+const PALETTE=['#6366f1','#3b82f6','#06b6d4','#22c55e','#a855f7','#ec4899','#f59e0b','#ef4444','#14b8a6','#f97316','#8b5cf6','#64748b'];
+
+// ===========================================================
+// CSV LOAD & PERSISTENCE
+// ===========================================================
+function processBacklogData(data, filename, dateStr, saveToDb = true) {
+    RAW_DATA = data.map(row => {
+        const r = {}; for (const k in row) r[clean(k)] = clean(row[k]);
+        r._id = (r['ID'] || '').replace(/\s/g, '');
+        r._status = r['Status'] || ''; r._priority = r['Prioridade'] || '';
+        r._tech = r['Atribuído - Técnico'] || r['Atribuido - Tecnico'] || '';
+        r._requester = r['Requerente - Requerente'] || '';
+        r._category = r['Categoria'] || ''; r._entity = r['Entidade'] || '';
+        r._title = r['Título'] || r['Titulo'] || '';
+        r._openDt = parseDate(r['Data de abertura']);
+        r._updDt = parseDate(r['Última atualização'] || r['Ultima atualizacao'] || '');
+        r._solTime = parseDuration(r['Estatísticas - Tempo de solução'] || r['Estatisticas - Tempo de solucao'] || '');
+        r._daysInactive = r._updDt ? daysBetween(r._updDt, NOW) : null;
+        r._isActive = !r._status.toLowerCase().includes('solucionado') && !r._status.toLowerCase().includes('fechado');
+        r._isStale = r._isActive && r._daysInactive !== null && r._daysInactive >= 7;
+        return r;
+    }).filter(r => r._id);
+    
+    FILTERED = [...RAW_DATA];
+    populateFilters(); renderAll(); generateInsights();
+    
+    document.getElementById('no-data').classList.add('hidden');
+    document.getElementById('backlog-content').classList.remove('hidden');
+    document.getElementById('header-sub').textContent = `SojoBacklog — ${RAW_DATA.length} chamados • Base: ${filename} (${dateStr})`;
+    
+    if (saveToDb) {
+        dbStore.save("backlog", filename, dateStr, RAW_DATA).catch(err => {
+            console.error("IndexedDB backlog write failed:", err);
+        });
+    }
+}
+
+async function initBacklog() {
+    try {
+        const cached = await dbStore.get("backlog");
+        if (cached && cached.data && cached.data.length > 0) {
+            RAW_DATA = cached.data;
+            FILTERED = [...RAW_DATA];
+            populateFilters();
+            renderAll();
+            generateInsights();
+            document.getElementById('no-data').classList.add('hidden');
+            document.getElementById('backlog-content').classList.remove('hidden');
+            document.getElementById('header-sub').textContent = `SojoBacklog — ${RAW_DATA.length} chamados • Base: ${cached.filename} (${cached.dateStr})`;
+        } else {
+            await fetchDefaultBacklog();
+        }
+    } catch (e) {
+        console.error("IndexedDB backlog error:", e);
+        await fetchDefaultBacklog();
+    }
+}
+
+async function fetchDefaultBacklog() {
+    try {
+        const res = await fetch('backlog.csv');
+        if (!res.ok) throw new Error("Arquivo padrão backlog.csv não encontrado na raiz.");
+        const text = await res.text();
+        Papa.parse(text, {
+            delimiter: ';', header: true, skipEmptyLines: 'greedy', encoding: 'UTF-8',
+            transformHeader: h => clean(h),
+            complete(results) {
+                processBacklogData(results.data, 'backlog.csv', 'Padrão da Pasta', false);
+            }
+        });
+    } catch (err) {
+        console.log("Aviso: backlog.csv padrão não encontrado ou bloqueado por CORS:", err.message);
+        showBacklogEmptyState();
+    }
+}
+
+function showBacklogEmptyState() {
+    document.getElementById('no-data').classList.remove('hidden');
+    document.getElementById('backlog-content').classList.add('hidden');
+    document.getElementById('header-sub').textContent = 'SojoBacklog — Carregue um CSV para iniciar';
+}
+
+document.getElementById('csv-input').addEventListener('change', function(e) {
+    const file = e.target.files[0]; if (!file) return;
+    document.getElementById('loading-screen').classList.remove('hidden');
+    Papa.parse(file, {
+        delimiter: ';', header: true, skipEmptyLines: 'greedy', encoding: 'UTF-8',
+        transformHeader: h => clean(h),
+        complete(results) {
+            processBacklogData(results.data, file.name, new Date().toLocaleString('pt-BR'), true);
+            document.getElementById('loading-screen').classList.add('hidden');
+            e.target.value = '';
+        }
+    });
+});
+
+// ===========================================================
+// TABS
+// ===========================================================
+document.querySelectorAll('.tab-btn:not(.subtab-btn)').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+        document.querySelectorAll('.tab-btn:not(.subtab-btn)').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(tc=>{
+            tc.classList.remove('active');
+            tc.classList.add('hidden');
+        });
+        const tgt=document.getElementById('tab-'+btn.dataset.tab);
+        if (tgt) {
+            tgt.classList.remove('hidden');
+            tgt.classList.add('active');
+        }
+    });
+});
+
+// SUB-TABS (Backlog: Dashboard e Insights)
+document.querySelectorAll('.subtab-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+        document.querySelectorAll('.subtab-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.subtab-content').forEach(tc=>{
+            tc.classList.remove('active');
+            tc.classList.add('hidden');
+        });
+        const tgt=document.getElementById('subtab-'+btn.dataset.subtab);
+        if (tgt) {
+            tgt.classList.remove('hidden');
+            tgt.classList.add('active');
+        }
+    });
+});
+
+// ===========================================================
+// FILTERS
+// ===========================================================
+function populateFilters(){
+    fillSel('filter-status',[...new Set(RAW_DATA.map(r=>r._status))].filter(Boolean).sort(),'Todos');
+    fillSel('filter-priority',[...new Set(RAW_DATA.map(r=>r._priority))].filter(Boolean).sort(),'Todas');
+    fillSel('filter-tech',[...new Set(RAW_DATA.map(r=>r._tech))].filter(Boolean).sort(),'Todos');
+    fillSel('filter-requester',[...new Set(RAW_DATA.map(r=>r._requester))].filter(Boolean).sort(),'Todos');
+}
+function fillSel(id,opts,all){const s=document.getElementById(id);s.innerHTML=`<option value="">${all}</option>`+opts.map(o=>`<option value="${o}">${o}</option>`).join('')}
+['filter-status','filter-priority','filter-tech','filter-requester','filter-stale-days','filter-from','filter-to'].forEach(id=>{document.getElementById(id).addEventListener('change',applyFilters)});
+document.getElementById('filter-stale-days').addEventListener('input',applyFilters);
+document.getElementById('filter-reset').addEventListener('click',()=>{['filter-status','filter-priority','filter-tech','filter-requester','filter-stale-days','filter-from','filter-to'].forEach(id=>{document.getElementById(id).value=''});clearCrossFilter();applyFilters()});
+
+function applyFilters(){
+    const st=document.getElementById('filter-status').value;
+    const pr=document.getElementById('filter-priority').value;
+    const tc=document.getElementById('filter-tech').value;
+    const rq=document.getElementById('filter-requester').value;
+    const staleDays=document.getElementById('filter-stale-days').value;
+    const from=document.getElementById('filter-from').value?new Date(document.getElementById('filter-from').value):null;
+    const to=document.getElementById('filter-to').value?new Date(document.getElementById('filter-to').value+'T23:59:59'):null;
+    FILTERED=RAW_DATA.filter(r=>{
+        if(st&&r._status!==st)return false;
+        if(pr&&r._priority!==pr)return false;
+        if(tc&&r._tech!==tc)return false;
+        if(rq&&r._requester!==rq)return false;
+        if(staleDays){
+            const minDays=parseInt(staleDays);
+            if(!r._isActive||r._daysInactive===null||r._daysInactive<minDays)return false;
+        }
+        if(from&&r._openDt&&r._openDt<from)return false;
+        if(to&&r._openDt&&r._openDt>to)return false;
+        for (const [field, item] of Object.entries(crossFilters)) {
+            const rowVal = r[field];
+            const filterVal = item.value;
+            const isEmptyFilter = filterVal === '(vazio)' || filterVal === '(não atribuído)' || !filterVal;
+            const isRowValEmpty = !rowVal || rowVal === '(vazio)' || rowVal === '(não atribuído)';
+            if(isEmptyFilter){
+                if(!isRowValEmpty) return false;
+            } else {
+                if(rowVal !== filterVal) return false;
+            }
+        }
+        
+        // KPI filters
+        if(kpiFilter==='active'&&!r._isActive)return false;
+        if(kpiFilter==='solved'&&!r._status.toLowerCase().includes('solucionado'))return false;
+        if(kpiFilter==='stale'&&!r._isStale)return false;
+        if(kpiFilter==='pending'&&!r._status.toLowerCase().includes('pendente'))return false;
+        
+        return true;
+    });
+    renderAll();
+}
+
+// ===========================================================
+// CROSS-FILTER
+// ===========================================================
+function getFieldLabel(field) {
+    switch(field) {
+        case '_status': return 'Status';
+        case '_priority': return 'Prioridade';
+        case '_tech': return 'Técnico';
+        case '_requester': return 'Requerente';
+        case '_category': return 'Categoria';
+        case '_entity': return 'Entidade';
+        default: return field;
+    }
+}
+function renderCrossFilterChips() {
+    const container = document.getElementById('cf-chips-container');
+    const bar = document.getElementById('crossfilter-bar');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    const entries = Object.entries(crossFilters);
+    let hasFilters = entries.length > 0;
+    
+    entries.forEach(([field, item]) => {
+        const chip = document.createElement('span');
+        chip.className = 'cf-chip';
+        chip.innerHTML = `<span><strong>${getFieldLabel(field)}:</strong> ${item.label}</span><button class="cf-clear" onclick="removeCrossFilter('${field}')">✕</button>`;
+        container.appendChild(chip);
+    });
+    
+    if (kpiFilter) {
+        hasFilters = true;
+        const chip = document.createElement('span');
+        chip.className = 'cf-chip';
+        let kpiLabel = kpiFilter;
+        if (kpiFilter === 'active') kpiLabel = 'Backlog Ativo';
+        else if (kpiFilter === 'solved') kpiLabel = 'Solucionados';
+        else if (kpiFilter === 'stale') kpiLabel = 'Parados > 7 Dias';
+        else if (kpiFilter === 'pending') kpiLabel = 'Pendentes';
+        
+        chip.innerHTML = `<span><strong>KPI:</strong> ${kpiLabel}</span><button class="cf-clear" onclick="clearKPIFilter()">✕</button>`;
+        container.appendChild(chip);
+    }
+    
+    if (hasFilters) {
+        bar.classList.add('active');
+    } else {
+        bar.classList.remove('active');
+    }
+}
+function setCrossFilter(field, value, label){
+    if (crossFilters[field] && crossFilters[field].value === value) {
+        delete crossFilters[field];
+    } else {
+        crossFilters[field] = { value, label };
+    }
+    renderCrossFilterChips();
+    applyFilters();
+}
+window.setKPIFilter = function(type, label){
+    kpiFilter=type;
+    renderCrossFilterChips();
+    applyFilters();
+};
+window.removeCrossFilter = function(field) {
+    delete crossFilters[field];
+    renderCrossFilterChips();
+    applyFilters();
+};
+window.clearKPIFilter = function() {
+    kpiFilter = null;
+    renderCrossFilterChips();
+    applyFilters();
+};
+window.clearAllCrossFilters = function() {
+    crossFilters = {};
+    kpiFilter = null;
+    renderCrossFilterChips();
+    applyFilters();
+};
+window.clearCrossFilter = function(){
+    clearAllCrossFilters();
+};
+document.getElementById('cf-clear-all').addEventListener('click', clearAllCrossFilters);
+
+// ===========================================================
+// RENDER ALL
+// ===========================================================
+function renderAll(){renderKPIs();renderCharts();renderStaleTable();generateInsights()}
+
+// ===========================================================
+// KPIs
+// ===========================================================
+function renderKPIs(){
+    const t=FILTERED.length,a=FILTERED.filter(r=>r._isActive).length,s=FILTERED.filter(r=>r._status.toLowerCase().includes('solucionado')).length;
+    const stale=FILTERED.filter(r=>r._isStale).length,pend=FILTERED.filter(r=>r._status.toLowerCase().includes('pendente')).length;
+    const sols=FILTERED.filter(r=>r._solTime>0).map(r=>r._solTime),avg=sols.length?sols.reduce((a,b)=>a+b,0)/sols.length:0;
+    document.getElementById('kpi-row').innerHTML=`
+        <div class="kpi-card blue interactive" onclick="clearCrossFilter()"><div class="kpi-icon">📋</div><div class="kpi-value">${t.toLocaleString('pt-BR')}</div><div class="kpi-label">Total de Chamados</div></div>
+        <div class="kpi-card red interactive" onclick="setKPIFilter('active','Backlog Ativo')"><div class="kpi-icon">🔥</div><div class="kpi-value">${a.toLocaleString('pt-BR')}</div><div class="kpi-label">Backlog Ativo</div><div class="kpi-sub bad">${pct(a,t)}% do total</div></div>
+        <div class="kpi-card green interactive" onclick="setKPIFilter('solved','Solucionados')"><div class="kpi-icon">✅</div><div class="kpi-value">${s.toLocaleString('pt-BR')}</div><div class="kpi-label">Solucionados</div><div class="kpi-sub good">${pct(s,t)}%</div></div>
+        <div class="kpi-card yellow"><div class="kpi-icon">⏱️</div><div class="kpi-value">${fmtHours(avg)}</div><div class="kpi-label">Tempo Médio Solução</div><div class="kpi-sub info">${sols.length} amostras</div></div>
+        <div class="kpi-card purple interactive" onclick="setKPIFilter('stale','Parados &gt; 7 Dias')"><div class="kpi-icon">⚠️</div><div class="kpi-value">${stale.toLocaleString('pt-BR')}</div><div class="kpi-label">Parados &gt;7 Dias</div><div class="kpi-sub ${+pct(stale,a)>40?'bad':'warn'}">${pct(stale,a)}% do backlog</div></div>
+        <div class="kpi-card indigo interactive" onclick="setKPIFilter('pending','Pendentes')"><div class="kpi-icon">⏳</div><div class="kpi-value">${pend.toLocaleString('pt-BR')}</div><div class="kpi-label">Pendentes</div><div class="kpi-sub warn">Aguardando</div></div>`;
+}
+
+// ===========================================================
+// CHARTS
+// ===========================================================
+function destroyCharts(){Object.values(CHARTS).forEach(c=>c.destroy());CHARTS={}}
+
+function makeClickHandler(chartKey, field, labelFn){
+    return (evt)=>{
+        const chart=CHARTS[chartKey];if(!chart)return;
+        const pts=chart.getElementsAtEventForMode(evt,'nearest',{intersect:true},true);
+        if(!pts.length)return;
+        const idx=pts[0].index;
+        const lbl=chart.data.labels[idx];
+        const val=labelFn?labelFn(idx):lbl;
+        if(crossFilters[field]&&crossFilters[field].value===val){
+            removeCrossFilter(field);
+            return;
+        }
+        setCrossFilter(field,val,lbl);
+    };
+}
+
+function renderCharts(){
+    destroyCharts();
+    const statusData=counter(FILTERED,'_status'),prioData=counter(FILTERED,'_priority');
+    const solved=FILTERED.filter(r=>r._status.toLowerCase().includes('solucionado')).length;
+    const stale=FILTERED.filter(r=>r._isStale).length;
+    const activeOk=FILTERED.filter(r=>r._isActive&&!r._isStale).length;
+
+    // Status
+    const csStatus=document.getElementById('chart-status');
+    CHARTS.status=new Chart(csStatus,{type:'doughnut',data:{labels:statusData.map(d=>d[0]),datasets:[{data:statusData.map(d=>d[1]),backgroundColor:PALETTE,borderWidth:0,hoverOffset:8}]},options:{cutout:'68%',plugins:{legend:{position:'bottom',labels:{padding:10,font:{size:10}}}},responsive:true,maintainAspectRatio:true,onClick:makeClickHandler('status','_status')}});
+
+    // Priority
+    CHARTS.priority=new Chart(document.getElementById('chart-priority'),{type:'doughnut',data:{labels:prioData.map(d=>d[0]),datasets:[{data:prioData.map(d=>d[1]),backgroundColor:['#6366f1','#f59e0b','#ef4444','#22c55e'],borderWidth:0,hoverOffset:8}]},options:{cutout:'68%',plugins:{legend:{position:'bottom',labels:{padding:10,font:{size:10}}}},responsive:true,maintainAspectRatio:true,onClick:makeClickHandler('priority','_priority')}});
+
+    // Health
+    CHARTS.health=new Chart(document.getElementById('chart-health'),{type:'doughnut',data:{labels:['Solucionados','Ativos OK','Parados >7d'],datasets:[{data:[solved,activeOk,stale],backgroundColor:['#22c55e','#3b82f6','#ef4444'],borderWidth:0,hoverOffset:8}]},options:{cutout:'68%',plugins:{legend:{position:'bottom',labels:{padding:10,font:{size:10}}}},responsive:true,maintainAspectRatio:true}});
+
+    // Timeline
+    const dc={};FILTERED.forEach(r=>{if(r._openDt){const k=r._openDt.toISOString().slice(0,10);dc[k]=(dc[k]||0)+1}});
+    const sd=Object.entries(dc).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30);
+    CHARTS.timeline=new Chart(document.getElementById('chart-timeline'),{type:'bar',data:{labels:sd.map(d=>{const dt=new Date(d[0]+'T12:00:00');return dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}),datasets:[{label:'Chamados',data:sd.map(d=>d[1]),backgroundColor:(ctx)=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,260);g.addColorStop(0,'rgba(99,102,241,.7)');g.addColorStop(1,'rgba(99,102,241,.1)');return g},borderRadius:6,borderSkipped:false,barPercentage:.7}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:'rgba(42,45,58,.4)'},ticks:{precision:0}},x:{grid:{display:false}}}}});
+    // Techs
+    const techLabels=[], techVals=[], techOriginal=[];
+    counter(FILTERED,'_tech').slice(0,12).forEach(d=>{techLabels.push(d[0]||'(não atribuído)');techVals.push(d[1]);techOriginal.push(d[0])});
+    const csTechs=document.getElementById('chart-techs');
+    CHARTS.techs=new Chart(csTechs,{type:'bar',data:{labels:techLabels,datasets:[{label:'Chamados',data:techVals,backgroundColor:techLabels.map((_,i)=>PALETTE[i%PALETTE.length]),borderRadius:6,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(42,45,58,.4)'},ticks:{precision:0}},y:{grid:{display:false},ticks:{font:{size:10}}}},onClick:(evt)=>{const pts=CHARTS.techs.getElementsAtEventForMode(evt,'nearest',{intersect:true},true);if(!pts.length)return;const idx=pts[0].index;const val=techOriginal[idx];if(crossFilters['_tech']&&crossFilters['_tech'].value===val){removeCrossFilter('_tech');return}setCrossFilter('_tech',val,techLabels[idx])}}});
+
+    // Requesters
+    const reqLabels=[], reqVals=[], reqOriginal=[];
+    counter(FILTERED,'_requester').slice(0,12).forEach(d=>{reqLabels.push(d[0]||'(não atribuído)');reqVals.push(d[1]);reqOriginal.push(d[0])});
+    const csRequesters=document.getElementById('chart-requesters');
+    CHARTS.requesters=new Chart(csRequesters,{type:'bar',data:{labels:reqLabels,datasets:[{label:'Chamados',data:reqVals,backgroundColor:reqLabels.map((_,i)=>PALETTE[(i+2)%PALETTE.length]),borderRadius:6,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(42,45,58,.4)'},ticks:{precision:0}},y:{grid:{display:false},ticks:{font:{size:10}}}},onClick:(evt)=>{const pts=CHARTS.requesters.getElementsAtEventForMode(evt,'nearest',{intersect:true},true);if(!pts.length)return;const idx=pts[0].index;const val=reqOriginal[idx];if(crossFilters['_requester']&&crossFilters['_requester'].value===val){removeCrossFilter('_requester');return}setCrossFilter('_requester',val,reqLabels[idx])}}});
+
+    // Categories
+    const catLabels=[],catVals=[],catOriginal=[];
+    counter(FILTERED,'_category').slice(0,10).forEach(d=>{catLabels.push(shortCat(d[0]));catVals.push(d[1]);catOriginal.push(d[0])});
+    CHARTS.categories=new Chart(document.getElementById('chart-categories'),{type:'bar',data:{labels:catLabels,datasets:[{label:'Chamados',data:catVals,backgroundColor:catLabels.map((_,i)=>PALETTE[(i+4)%PALETTE.length]),borderRadius:6,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(42,45,58,.4)'},ticks:{precision:0}},y:{grid:{display:false},ticks:{font:{size:10}}}},onClick:(evt)=>{const pts=CHARTS.categories.getElementsAtEventForMode(evt,'nearest',{intersect:true},true);if(!pts.length)return;const idx=pts[0].index;const val=catOriginal[idx];if(crossFilters['_category']&&crossFilters['_category'].value===val){removeCrossFilter('_category');return}setCrossFilter('_category',val,catLabels[idx])}}});
+
+    // Entities
+    const entLabels=[],entVals=[],entOriginal=[];
+    counter(FILTERED,'_entity').slice(0,10).forEach(d=>{entLabels.push(shortEntity(d[0]));entVals.push(d[1]);entOriginal.push(d[0])});
+    CHARTS.entities=new Chart(document.getElementById('chart-entities'),{type:'bar',data:{labels:entLabels,datasets:[{label:'Chamados',data:entVals,backgroundColor:'rgba(34,197,94,.5)',borderColor:'#22c55e',borderWidth:1,borderRadius:6,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(42,45,58,.4)'},ticks:{precision:0}},y:{grid:{display:false},ticks:{font:{size:10}}}},onClick:(evt)=>{const pts=CHARTS.entities.getElementsAtEventForMode(evt,'nearest',{intersect:true},true);if(!pts.length)return;const idx=pts[0].index;const val=entOriginal[idx];if(crossFilters['_entity']&&crossFilters['_entity'].value===val){removeCrossFilter('_entity');return}setCrossFilter('_entity',val,entLabels[idx])}}});
+
+    // Stale by tech
+    const st={};FILTERED.filter(r=>r._isStale).forEach(r=>{const t=r._tech||'(não atribuído)';st[t]=(st[t]||0)+1});
+    const sbt=Object.entries(st).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    CHARTS.staleTech=new Chart(document.getElementById('chart-stale-tech'),{type:'bar',data:{labels:sbt.map(d=>d[0]),datasets:[{label:'Parados >7d',data:sbt.map(d=>d[1]),backgroundColor:'rgba(239,68,68,.5)',borderColor:'#ef4444',borderWidth:1,borderRadius:6,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(42,45,58,.4)'},ticks:{precision:0}},y:{grid:{display:false},ticks:{font:{size:10}}}}}});
+}
+
+// ===========================================================
+// DATA TABLE
+// ===========================================================
+function renderStaleTable(){
+    const all=FILTERED;
+    const q=(document.getElementById('table-search').value||'').toLowerCase();
+    staleFiltered=all.filter(r=>!q||r._id.toLowerCase().includes(q)||r._title.toLowerCase().includes(q)||r._tech.toLowerCase().includes(q)||r._requester.toLowerCase().includes(q)||r._entity.toLowerCase().includes(q));
+    staleFiltered.sort((a,b)=>{
+        let va,vb;
+        switch(tableSortCol){
+            case'id':va=a._id;vb=b._id;break;case'title':va=a._title;vb=b._title;break;
+            case'opened':va=a._openDt||new Date(0);vb=b._openDt||new Date(0);return tableSortDir==='asc'?va-vb:vb-va;
+            case'updated':va=a._updDt||new Date(0);vb=b._updDt||new Date(0);return tableSortDir==='asc'?va-vb:vb-va;
+            case'days':va=a._daysInactive||0;vb=b._daysInactive||0;return tableSortDir==='asc'?va-vb:vb-va;
+            case'status':va=a._status;vb=b._status;break;case'tech':va=a._tech;vb=b._tech;break;
+            case'requester':va=a._requester;vb=b._requester;break;
+            case'priority':va=a._priority;vb=b._priority;break;
+            default:va=a._daysInactive||0;vb=b._daysInactive||0;return tableSortDir==='asc'?va-vb:vb-va;
+        }
+        if(typeof va==='string')return tableSortDir==='asc'?va.localeCompare(vb):vb.localeCompare(va);
+        return tableSortDir==='asc'?va-vb:vb-va;
+    });
+
+    // Update dynamic title and count
+    let tableTitle = "Lista Geral de Chamados";
+    let badgeColor = "var(--info-bg)";
+    let badgeText = "var(--info)";
+    if (kpiFilter === 'stale') {
+        tableTitle = "🔴 Chamados Sem Ação &gt; 7 Dias";
+        badgeColor = "var(--danger-bg)";
+        badgeText = "var(--danger)";
+    } else if (kpiFilter === 'active') {
+        tableTitle = "🔥 Backlog Ativo";
+        badgeColor = "var(--danger-bg)";
+        badgeText = "var(--danger)";
+    } else if (kpiFilter === 'solved') {
+        tableTitle = "✅ Chamados Solucionados";
+        badgeColor = "var(--success-bg)";
+        badgeText = "var(--success)";
+    } else if (kpiFilter === 'pending') {
+        tableTitle = "⏳ Chamados Pendentes";
+        badgeColor = "var(--warning-bg)";
+        badgeText = "var(--warning)";
+    } else if (Object.keys(crossFilters).length > 0) {
+        const filterLabels = Object.values(crossFilters).map(item => item.label).join(' + ');
+        tableTitle = `🔍 Filtrado por: ${filterLabels}`;
+    }
+
+    const titleEl = document.getElementById('table-title');
+    if (titleEl) {
+        titleEl.innerHTML = `${tableTitle} <span class="table-count" id="table-count-badge" style="background:${badgeColor};color:${badgeText}">${staleFiltered.length}</span>`;
+    }
+
+    renderTablePage();
+    document.querySelectorAll('#table-section th').forEach(th=>{th.classList.remove('sorted-asc','sorted-desc');if(th.dataset.col===tableSortCol)th.classList.add(tableSortDir==='asc'?'sorted-asc':'sorted-desc')});
+}
+function renderTablePage(){
+    const start=(currentPage-1)*PAGE_SIZE,pageData=staleFiltered.slice(start,start+PAGE_SIZE);
+    document.getElementById('stale-tbody').innerHTML=pageData.map(r=>{
+        const d=r._daysInactive;
+        const dStr=d!==null?`${d}d`:'—';
+        const dc=d>=30?'critical':d>=14?'warning':'ok';
+        return`<tr><td style="font-weight:600;font-variant-numeric:tabular-nums">${r._id}</td><td title="${r._title}" style="max-width:320px;overflow:hidden;text-overflow:ellipsis">${r._title}</td><td>${fmtDate(r._openDt)}</td><td>${fmtDate(r._updDt)}</td><td class="days-cell ${dc}">${dStr}</td><td><span class="status-badge ${statusClass(r._status)}">${r._status}</span></td><td>${r._tech||'<span style="color:var(--text-muted)">—</span>'}</td><td>${r._requester||'<span style="color:var(--text-muted)">—</span>'}</td><td><span class="prio-badge ${prioClass(r._priority)}">${r._priority}</span></td></tr>`
+    }).join('');
+    const tot=staleFiltered.length,end=Math.min(start+PAGE_SIZE,tot);
+    document.getElementById('table-info').textContent=`Mostrando ${tot?start+1:0}–${end} de ${tot}`;
+    const pages=Math.ceil(tot/PAGE_SIZE),pag=document.getElementById('pagination');let h='';
+    h+=`<button ${currentPage<=1?'disabled':''} onclick="goPage(${currentPage-1})">‹</button>`;
+    for(let i=1;i<=pages;i++){if(pages>7&&i>2&&i<pages-1&&Math.abs(i-currentPage)>1){if(i===3||i===pages-2)h+='<button disabled>…</button>';continue}h+=`<button class="${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`}
+    h+=`<button ${currentPage>=pages?'disabled':''} onclick="goPage(${currentPage+1})">›</button>`;pag.innerHTML=h;
+}
+function goPage(p){currentPage=p;renderTablePage()}
+document.getElementById('table-search').addEventListener('input',()=>{currentPage=1;renderStaleTable()});
+document.querySelectorAll('#table-section th').forEach(th=>{th.addEventListener('click',()=>{const col=th.dataset.col;if(tableSortCol===col){tableSortDir=tableSortDir==='asc'?'desc':'asc'}else{tableSortCol=col;tableSortDir=col==='days'||col==='opened'||col==='updated'?'desc':'asc'}currentPage=1;renderStaleTable()})});
+
+document.getElementById('export-csv-btn').addEventListener('click',()=>{
+    if(!staleFiltered.length){
+        alert('Nenhum dado filtrado para exportar!');
+        return;
+    }
+    const exportData = staleFiltered.map(r=>{
+        const cleanRow={};
+        for(const k in r){
+            if(!k.startsWith('_')){
+                cleanRow[k]=r[k];
+            }
+        }
+        return cleanRow;
+    });
+    const csvString=Papa.unparse(exportData,{delimiter:';'});
+    const blob=new Blob(["\ufeff"+csvString],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement('a');
+    link.href=url;
+    link.setAttribute('download',`glpi_backlog_filtrado_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
+
+// ===========================================================
+// INSIGHTS ENGINE
+// ===========================================================
+function generateInsights(){
+    const D=FILTERED;
+    const total=D.length;
+    if(!total){
+        const gridEl = document.getElementById('insights-grid');
+        if (gridEl) gridEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)">Nenhum chamado corresponde aos filtros ativos.</div>';
+        return;
+    }
+    const active=D.filter(r=>r._isActive);
+    const solved=D.filter(r=>r._status.toLowerCase().includes('solucionado'));
+    const stale=D.filter(r=>r._isStale);
+    const solTimes=D.filter(r=>r._solTime>0).map(r=>r._solTime);
+    const avgSol=solTimes.length?solTimes.reduce((a,b)=>a+b,0)/solTimes.length:0;
+    const medianSol=solTimes.length?solTimes.sort((a,b)=>a-b)[Math.floor(solTimes.length/2)]:0;
+    const insights=[];
+
+    // 1. Backlog Health Score
+    const pctSolved=pct(solved.length,total);
+    const pctStale=pct(stale.length,active.length);
+    const healthScore=Math.max(0,Math.round(100-(+pctStale*0.6)-((100-+pctSolved)*0.4)));
+    const hClass=healthScore>=70?'positive':healthScore>=40?'warning':'critical';
+    insights.push({severity:hClass,icon:'🏥',title:'Índice de Saúde do Backlog',body:`
+        <p>O índice de saúde geral do backlog está em:</p>
+        <span class="insight-metric ${healthScore>=70?'green':healthScore>=40?'yellow':'red'}">${healthScore}/100</span>
+        <p>Composição: <strong>${total}</strong> chamados no total, <strong>${solved.length}</strong> solucionados (${pctSolved}%), <strong>${stale.length}</strong> parados há mais de 7 dias (${pctStale}% do backlog ativo).</p>
+        <div class="insight-reco"><strong>💡 Interpretação:</strong> ${healthScore>=70?'O backlog está em condições razoáveis, mas atenção aos chamados parados.':healthScore>=40?'O backlog precisa de atenção. Há um volume significativo de chamados sem ação.':'Situação crítica — a maioria do backlog ativo está sem ação há mais de uma semana.'}</div>`});
+
+    // 2. Technician Bottleneck
+    const techStale={};stale.forEach(r=>{const t=r._tech||'(não atribuído)';techStale[t]=(techStale[t]||0)+1});
+    const topStaleTech=Object.entries(techStale).sort((a,b)=>b[1]-a[1]);
+    if(topStaleTech.length){
+        const [techName,techCount]=topStaleTech[0];
+        const techPct=pct(techCount,stale.length);
+        insights.push({severity:+techPct>50?'critical':'warning',icon:'👤',title:'Gargalo de Técnico Identificado',body:`
+            <p><strong>${techName}</strong> concentra <span class="insight-metric red">${techCount} chamados parados</span> — isso representa <strong>${techPct}%</strong> de todos os chamados inativos.</p>
+            <div class="insight-bar">${topStaleTech.slice(0,5).map(([n,v])=>`<div class="insight-bar-item"><span class="insight-bar-label">${n||'(vazio)'}</span><div class="insight-bar-track"><div class="insight-bar-fill" style="width:${pct(v,topStaleTech[0][1])}%;background:var(--danger)"></div></div><span class="insight-bar-val">${v}</span></div>`).join('')}</div>
+            <div class="insight-reco"><strong>💡 Recomendação:</strong> Verifique se ${techName} possui sobrecarga de trabalho ou se os chamados precisam ser redistribuídos. ${+techPct>70?'A concentração acima de 70% sugere que pode haver um processo em lote aguardando ação centralizada (ex: coletas).':''}</div>`});
+    }
+
+    // 3. Category Bottleneck
+    const catStale={};stale.forEach(r=>{const c=r._category||'(vazio)';catStale[c]=(catStale[c]||0)+1});
+    const topStaleCat=Object.entries(catStale).sort((a,b)=>b[1]-a[1]);
+    if(topStaleCat.length){
+        const [catName,catCount]=topStaleCat[0];
+        insights.push({severity:+pct(catCount,stale.length)>50?'critical':'warning',icon:'📂',title:'Categoria com Maior Gargalo',body:`
+            <p>A categoria <strong>"${shortCat(catName)}"</strong> possui <span class="insight-metric yellow">${catCount} chamados parados</span> — ${pct(catCount,stale.length)}% do total inativo.</p>
+            <div class="insight-bar">${topStaleCat.slice(0,5).map(([n,v])=>`<div class="insight-bar-item"><span class="insight-bar-label">${shortCat(n)}</span><div class="insight-bar-track"><div class="insight-bar-fill" style="width:${pct(v,topStaleCat[0][1])}%;background:var(--warning)"></div></div><span class="insight-bar-val">${v}</span></div>`).join('')}</div>
+            <div class="insight-reco"><strong>💡 Recomendação:</strong> Analise o processo desta categoria para identificar bloqueios sistêmicos ou dependências externas.</div>`});
+    }
+
+    // 4. Critical/High Priority Stale
+    const critStale=stale.filter(r=>r._priority.toLowerCase().includes('crit')||r._priority.toLowerCase().includes('alta'));
+    if(critStale.length){
+        insights.push({severity:'critical',icon:'🚨',title:'Chamados Críticos/Alta Prioridade Parados',body:`
+            <p>Existem <span class="insight-metric red">${critStale.length} chamados</span> de prioridade <strong>Crítica ou Alta</strong> sem ação há mais de 7 dias!</p>
+            <div class="insight-bar">${critStale.sort((a,b)=>(b._daysInactive||0)-(a._daysInactive||0)).slice(0,5).map(r=>`<div class="insight-bar-item"><span class="insight-bar-label" title="${r._title}">${r._id} — ${r._title.substring(0,30)}…</span><div class="insight-bar-track"><div class="insight-bar-fill" style="width:${Math.min(100,((r._daysInactive||0)/30)*100)}%;background:var(--danger)"></div></div><span class="insight-bar-val" style="color:var(--danger)">${r._daysInactive}d</span></div>`).join('')}</div>
+            <div class="insight-reco"><strong>💡 Ação imediata:</strong> Estes chamados deveriam ter tratamento prioritário. Escalar para a gestão se necessário.</div>`});
+    }
+
+    // 5. Ancient Tickets
+    const ancient=stale.filter(r=>r._daysInactive&&r._daysInactive>=60).sort((a,b)=>(b._daysInactive||0)-(a._daysInactive||0));
+    if(ancient.length){
+        insights.push({severity:'critical',icon:'💀',title:'Chamados Abandonados (>60 dias)',body:`
+            <p>Foram encontrados <span class="insight-metric red">${ancient.length} chamados</span> sem <strong>nenhuma</strong> ação há mais de 60 dias. O mais antigo está parado há <strong>${ancient[0]._daysInactive} dias</strong>.</p>
+            <div class="insight-bar">${ancient.slice(0,5).map(r=>`<div class="insight-bar-item"><span class="insight-bar-label" title="${r._title}">${r._id}</span><div class="insight-bar-track"><div class="insight-bar-fill" style="width:${Math.min(100,((r._daysInactive||0)/ancient[0]._daysInactive)*100)}%;background:linear-gradient(90deg,var(--danger),var(--pink))"></div></div><span class="insight-bar-val" style="color:var(--danger)">${r._daysInactive}d</span></div>`).join('')}</div>
+            <div class="insight-reco"><strong>💡 Recomendação:</strong> Avaliar se estes chamados devem ser encerrados, escalonados ou reclassificados. Chamados parados por meses indicam possível processo travado.</div>`});
+    }
+
+    // 6. Volume Trend
+    const dc={};D.forEach(r=>{if(r._openDt){const k=r._openDt.toISOString().slice(0,10);dc[k]=(dc[k]||0)+1}});
+    const days=Object.entries(dc).sort((a,b)=>a[0].localeCompare(b[0]));
+    if(days.length>=6){
+        const recent=days.slice(-5).map(d=>d[1]);
+        const prior=days.slice(-10,-5).map(d=>d[1]);
+        const avgRecent=recent.reduce((a,b)=>a+b,0)/recent.length;
+        const avgPrior=prior.length?prior.reduce((a,b)=>a+b,0)/prior.length:avgRecent;
+        const trend=avgPrior>0?((avgRecent-avgPrior)/avgPrior*100).toFixed(0):0;
+        const trendUp=+trend>0;
+        insights.push({severity:trendUp&&+trend>30?'warning':!trendUp?'positive':'info',icon:trendUp?'📈':'📉',title:'Tendência de Volume de Abertura',body:`
+            <p>A média de chamados abertos nos últimos 5 dias foi de <span class="insight-metric ${trendUp?'yellow':'green'}">${avgRecent.toFixed(1)}/dia</span> comparado com <strong>${avgPrior.toFixed(1)}/dia</strong> nos 5 dias anteriores.</p>
+            <p>Variação: <span class="insight-metric ${trendUp?'red':'green'}">${trendUp?'+':''}${trend}%</span></p>
+            <div class="insight-reco"><strong>💡 Interpretação:</strong> ${trendUp?'O volume está crescendo — monitorar se a equipe está absorvendo a demanda.':'O volume está estável ou em queda — boa notícia para a saúde do backlog.'}</div>`});
+    }
+
+    // 7. Solution Time Analysis
+    if(solTimes.length>5){
+        const fast=solTimes.filter(t=>t<=2).length;
+        const slow=solTimes.filter(t=>t>24).length;
+        insights.push({severity:'info',icon:'⏱️',title:'Análise de Tempo de Solução',body:`
+            <p>Dos <strong>${solTimes.length}</strong> chamados resolvidos com tempo registrado:</p>
+            <p><span class="insight-metric green">Rápidos (&lt;2h): ${fast}</span> <span class="insight-metric blue">Mediana: ${fmtHours(medianSol)}</span> <span class="insight-metric yellow">Lentos (&gt;24h): ${slow}</span></p>
+            <p>O tempo <strong>médio</strong> é de <strong>${fmtHours(avgSol)}</strong> e a <strong>mediana</strong> é de <strong>${fmtHours(medianSol)}</strong>.</p>
+            <div class="insight-reco"><strong>💡 Nota:</strong> ${avgSol>medianSol*3?'A média é muito superior à mediana, indicando que alguns chamados demoram muito e puxam a média para cima. Investigue os outliers.':'A média e mediana são relativamente próximas, indicando uma distribuição mais homogênea nos tempos de resolução.'}</div>`});
+    }
+
+    // 8. Unassigned Tickets
+    const unassigned=active.filter(r=>!r._tech||r._tech.trim()==='');
+    if(unassigned.length){
+        insights.push({severity:unassigned.length>10?'warning':'info',icon:'🎯',title:'Chamados Sem Técnico Atribuído',body:`
+            <p>Existem <span class="insight-metric purple">${unassigned.length} chamados ativos</span> sem nenhum técnico responsável atribuído.</p>
+            <div class="insight-reco"><strong>💡 Recomendação:</strong> Atribuir técnicos a esses chamados para evitar que fiquem esquecidos no backlog.</div>`});
+    }
+
+    // 9. Top Requesters
+    const reqData=counter(D,'_requester').slice(0,5);
+    if(reqData.length){
+        insights.push({severity:'neutral',icon:'📩',title:'Requerentes Mais Frequentes',body:`
+            <p>Os 5 maiores geradores de chamados:</p>
+            <div class="insight-bar">${reqData.map(([n,v])=>`<div class="insight-bar-item"><span class="insight-bar-label">${n}</span><div class="insight-bar-track"><div class="insight-bar-fill" style="width:${pct(v,reqData[0][1])}%;background:var(--purple)"></div></div><span class="insight-bar-val">${v}</span></div>`).join('')}</div>
+            <div class="insight-reco"><strong>💡 Nota:</strong> Se os mesmos requerentes abrem muitos chamados, pode indicar problemas recorrentes nos seus equipamentos/clientes.</div>`});
+    }
+
+    // 10. Entity Bottleneck
+    const entStale={};stale.forEach(r=>{const e=r._entity||'(vazio)';entStale[e]=(entStale[e]||0)+1});
+    const topStaleEnt=Object.entries(entStale).sort((a,b)=>b[1]-a[1]);
+    if(topStaleEnt.length){
+        const [entName,entCount]=topStaleEnt[0];
+        insights.push({severity:+pct(entCount,stale.length)>50?'critical':'warning',icon:'🏢',title:'Gargalo por Entidade',body:`
+            <p>A entidade <strong>"${shortEntity(entName)}"</strong> concentra o maior número de chamados parados: <span class="insight-metric red">${entCount} chamados</span> — representando <strong>${pct(entCount,stale.length)}%</strong> de todos os chamados inativos.</p>
+            <div class="insight-bar">${topStaleEnt.slice(0,5).map(([n,v])=>`<div class="insight-bar-item"><span class="insight-bar-label">${shortEntity(n)}</span><div class="insight-bar-track"><div class="insight-bar-fill" style="width:${pct(v,topStaleEnt[0][1])}%;background:var(--cyan)"></div></div><span class="insight-bar-val">${v}</span></div>`).join('')}</div>
+            <div class="insight-reco"><strong>💡 Recomendação:</strong> Avalie se há pendências de aprovação, faturamento ou alocação nesta unidade/entidade.</div>`});
+    }
+
+    // Render
+    const gridEl = document.getElementById('insights-grid');
+    if (gridEl) {
+        gridEl.innerHTML=insights.map(ins=>`
+            <div class="insight-card ${ins.severity}">
+                <div class="insight-icon">${ins.icon}</div>
+                <div class="insight-title">${ins.title}</div>
+                <div class="insight-body">${ins.body}</div>
+            </div>`).join('');
+    }
+}
+
+document.getElementById('loading-screen').classList.add('hidden');
+
+// ===========================================================
+// EQUIPAMENTOS / BUSCADOR INVENTARIO SYSTEM
+// ===========================================================
+let EQUIP_RAW_DATA = [], EQUIP_FILTERED = [];
+let equipCurrentPage = 1;
+const equipPageSize = 50;
+let equipSortCol = 'Cliente';
+let equipSortDir = 'asc';
+const EQUIP_COLUNAS_DISPONIVEIS = ['Cliente', 'Localidade', 'Modelo', 'Serial', 'Status', 'Idade do Equipamento', 'Numerador', 'Data de Compra'];
+const EQUIP_COLUNAS_PADRAO = ['Cliente', 'Localidade', 'Modelo', 'Serial', 'Status'];
+let equipColunasExibir = [...EQUIP_COLUNAS_PADRAO];
+let equipStatusSelected = {};
+
+// IndexedDB Helper
+const DB_NAME = "SojoBacklogDB";
+const DB_VERSION = 1;
+
+const dbStore = {
+    open() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains("backlog")) {
+                    db.createObjectStore("backlog", { keyPath: "id" });
+                }
+                if (!db.objectStoreNames.contains("equipamentos")) {
+                    db.createObjectStore("equipamentos", { keyPath: "id" });
+                }
+            };
+        });
+    },
+    async save(storeName, filename, dateStr, data) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(storeName, "readwrite");
+            const store = tx.objectStore(storeName);
+            store.clear();
+            const record = { id: "current_base", filename, dateStr, data };
+            const req = store.put(record);
+            req.onsuccess = () => resolve();
+            req.onerror = () => reject(req.error);
+        });
+    },
+    async get(storeName) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(storeName, "readonly");
+            const store = tx.objectStore(storeName);
+            const req = store.get("current_base");
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    },
+    async clear(storeName) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(storeName, "readwrite");
+            const store = tx.objectStore(storeName);
+            const req = store.clear();
+            req.onsuccess = () => resolve();
+            req.onerror = () => reject(req.error);
+        });
+    }
+};
+
+// Start Load on execution
+async function initEquipamentos() {
+    try {
+        const cached = await dbStore.get("equipamentos");
+        if (cached && cached.data && cached.data.length > 0) {
+            EQUIP_RAW_DATA = cached.data;
+            EQUIP_FILTERED = [...EQUIP_RAW_DATA];
+            document.getElementById('equip-base-date').textContent = `Base: ${cached.filename} (${cached.dateStr})`;
+            
+            initEquipStatusFilter(true); // populate and set check all
+            document.getElementById('equip-no-data').classList.add('hidden');
+            document.getElementById('equip-table-section').classList.remove('hidden');
+            document.getElementById('equip-export-btn').disabled = false;
+            
+            applyEquipFilters();
+        } else {
+            await fetchDefaultEquipamentos();
+        }
+    } catch (e) {
+        console.error("IndexedDB error:", e);
+        await fetchDefaultEquipamentos();
+    }
+}
+
+async function fetchDefaultEquipamentos() {
+    try {
+        let res = await fetch('equipamentos.xlsx');
+        let filename = 'equipamentos.xlsx';
+        let isCsv = false;
+        
+        if (!res.ok) {
+            res = await fetch('equipamentos.csv');
+            filename = 'equipamentos.csv';
+            isCsv = true;
+        }
+        
+        if (!res.ok) throw new Error("Planilha padrão não encontrada na pasta raiz.");
+        
+        if (isCsv) {
+            const text = await res.text();
+            Papa.parse(text, {
+                delimiter: ';', header: true, skipEmptyLines: 'greedy', encoding: 'UTF-8',
+                transformHeader: h => clean(h),
+                complete(results) {
+                    processLoadedEquipamentos(results.data, filename, 'Padrão da Pasta', false);
+                }
+            });
+        } else {
+            const arrayBuffer = await res.arrayBuffer();
+            const data = new Uint8Array(arrayBuffer);
+            const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+            processLoadedEquipamentos(jsonData, filename, 'Padrão da Pasta', false);
+        }
+    } catch (err) {
+        console.log("Aviso: planilha padrão de equipamentos não encontrada ou bloqueada por CORS:", err.message);
+        showEquipEmptyState();
+    }
+}
+
+function showEquipEmptyState() {
+    document.getElementById('equip-no-data').classList.remove('hidden');
+    document.getElementById('equip-table-section').classList.add('hidden');
+    document.getElementById('equip-base-date').textContent = '';
+    document.getElementById('equip-export-btn').disabled = true;
+}
+
+// normalise data loaded from Excel or CSV
+function processLoadedEquipamentos(data, filename, dateStr = new Date().toLocaleString('pt-BR'), saveToDb = true) {
+    const normalisedData = data.map(row => {
+        const normalisedRow = {};
+        for (const k in row) {
+            const kLower = k.trim().toLowerCase();
+            let finalKey = k.trim();
+            if (kLower === 'cliente') finalKey = 'Cliente';
+            else if (kLower === 'localidade') finalKey = 'Localidade';
+            else if (kLower === 'modelo') finalKey = 'Modelo';
+            else if (kLower === 'serial') finalKey = 'Serial';
+            else if (kLower === 'status') finalKey = 'Status';
+            else if (kLower === 'idade do equipamento') finalKey = 'Idade do Equipamento';
+            else if (kLower === 'numerador') finalKey = 'Numerador';
+            else if (kLower === 'data de compra') finalKey = 'Data de Compra';
+            
+            let val = row[k];
+            if (val instanceof Date) {
+                const day = String(val.getDate()).padStart(2, '0');
+                const month = String(val.getMonth() + 1).padStart(2, '0');
+                const year = val.getFullYear();
+                val = `${day}/${month}/${year}`;
+            }
+            normalisedRow[finalKey] = val;
+        }
+        return normalisedRow;
+    });
+
+    EQUIP_RAW_DATA = normalisedData;
+    EQUIP_FILTERED = [...EQUIP_RAW_DATA];
+    
+    if (saveToDb) {
+        dbStore.save("equipamentos", filename, dateStr, EQUIP_RAW_DATA).catch(err => {
+            console.error("IndexedDB write failed:", err);
+        });
+    }
+    
+    document.getElementById('equip-base-date').textContent = `Base: ${filename} (${dateStr})`;
+    
+    initEquipStatusFilter(true);
+    
+    document.getElementById('equip-no-data').classList.add('hidden');
+    document.getElementById('equip-table-section').classList.remove('hidden');
+    document.getElementById('equip-export-btn').disabled = false;
+    
+    equipCurrentPage = 1;
+    applyEquipFilters();
+}
+
+// Excel and CSV Upload Handlers
+document.getElementById('equipamentos-input').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+        loadingScreen.querySelector('.loading-text').textContent = "Processando planilha de equipamentos...";
+        loadingScreen.classList.remove('hidden');
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+        try {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+            
+            if (jsonData.length === 0) {
+                throw new Error("A planilha está vazia!");
+            }
+            
+            processLoadedEquipamentos(jsonData, file.name, new Date().toLocaleString('pt-BR'), true);
+        } catch (err) {
+            console.error(err);
+            alert("Erro ao ler planilha: " + err.message);
+        } finally {
+            if (loadingScreen) loadingScreen.classList.add('hidden');
+            e.target.value = '';
+        }
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+// Filters
+function initEquipStatusFilter(checkAll = true) {
+    const statuses = [...new Set(EQUIP_RAW_DATA.map(row => String(row['Status'] || '').trim()))]
+        .filter(Boolean)
+        .sort();
+        
+    equipStatusSelected = {};
+    statuses.forEach(s => {
+        equipStatusSelected[s] = checkAll;
+    });
+    
+    // Set up search box handler
+    const searchInput = document.getElementById('equip-status-search');
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.oninput = function() {
+            const term = this.value.toLowerCase().trim();
+            const items = document.querySelectorAll('#equip-status-list .dropdown-item');
+            items.forEach(item => {
+                const label = item.querySelector('span').textContent.toLowerCase();
+                item.style.display = label.includes(term) ? 'flex' : 'none';
+            });
+        };
+    }
+    
+    renderStatusDropdown();
+}
+
+function renderStatusDropdown() {
+    const dropdownList = document.getElementById('equip-status-list');
+    const dropdownBtn = document.getElementById('equip-status-btn');
+    if (!dropdownList || !dropdownBtn) return;
+    
+    const statuses = Object.keys(equipStatusSelected).sort();
+    const selectedCount = Object.values(equipStatusSelected).filter(Boolean).length;
+    
+    if (selectedCount === statuses.length) {
+        dropdownBtn.textContent = "Status: Todos";
+    } else if (selectedCount === 0) {
+        dropdownBtn.textContent = "Status: Nenhum";
+    } else if (selectedCount <= 2) {
+        const selectedNames = Object.entries(equipStatusSelected).filter(([k,v]) => v).map(([k]) => k);
+        dropdownBtn.textContent = `Status: ${selectedNames.join(', ')}`;
+    } else {
+        dropdownBtn.textContent = `Status: ${selectedCount} selecionados`;
+    }
+    
+    dropdownList.innerHTML = statuses.map(s => {
+        const checked = equipStatusSelected[s] ? 'checked' : '';
+        return `
+            <label class="dropdown-item">
+                <input type="checkbox" data-status="${s}" ${checked} onchange="toggleEquipStatus(this)">
+                <span>${s}</span>
+            </label>
+        `;
+    }).join('');
+    
+    // Re-apply search filter if present
+    const searchInput = document.getElementById('equip-status-search');
+    if (searchInput && searchInput.value) {
+        const term = searchInput.value.toLowerCase().trim();
+        const items = dropdownList.querySelectorAll('.dropdown-item');
+        items.forEach(item => {
+            const label = item.querySelector('span').textContent.toLowerCase();
+            item.style.display = label.includes(term) ? 'flex' : 'none';
+        });
+    }
+}
+
+window.selectAllEquipStatus = function(val) {
+    for (const s in equipStatusSelected) {
+        equipStatusSelected[s] = val;
+    }
+    renderStatusDropdown();
+    equipCurrentPage = 1;
+    applyEquipFilters();
+};
+
+window.toggleEquipStatus = function(chk) {
+    const status = chk.dataset.status;
+    equipStatusSelected[status] = chk.checked;
+    renderStatusDropdown();
+    equipCurrentPage = 1;
+    applyEquipFilters();
+};
+
+// Colunas Visibility Dropdown
+function initEquipColsFilter() {
+    renderColsDropdown();
+}
+
+function renderColsDropdown() {
+    const dropdownMenu = document.getElementById('equip-cols-menu');
+    if (!dropdownMenu) return;
+    
+    let html = '';
+    html += EQUIP_COLUNAS_DISPONIVEIS.map(col => {
+        const checked = equipColunasExibir.includes(col) ? 'checked' : '';
+        return `
+            <label class="dropdown-item">
+                <input type="checkbox" data-col="${col}" ${checked} onchange="toggleEquipCol(this)">
+                <span>${col}</span>
+            </label>
+        `;
+    }).join('');
+    
+    dropdownMenu.innerHTML = html;
+}
+
+window.toggleEquipCol = function(chk) {
+    const col = chk.dataset.col;
+    if (chk.checked) {
+        if (!equipColunasExibir.includes(col)) {
+            equipColunasExibir.push(col);
+        }
+    } else {
+        if (equipColunasExibir.length > 1) {
+            equipColunasExibir = equipColunasExibir.filter(c => c !== col);
+        } else {
+            chk.checked = true;
+            alert("Pelo menos uma coluna precisa ficar visível!");
+            return;
+        }
+    }
+    
+    equipColunasExibir.sort((a, b) => {
+        return EQUIP_COLUNAS_DISPONIVEIS.indexOf(a) - EQUIP_COLUNAS_DISPONIVEIS.indexOf(b);
+    });
+    
+    renderColsDropdown();
+    renderEquipTable();
+};
+
+// Global click handling to hide dropdown menus when clicking outside
+document.addEventListener('click', function(e) {
+    const statusBtn = document.getElementById('equip-status-btn');
+    const statusMenu = document.getElementById('equip-status-menu');
+    if (statusBtn && statusMenu) {
+        if (statusBtn.contains(e.target)) {
+            statusMenu.classList.toggle('show');
+            const colsMenu = document.getElementById('equip-cols-menu');
+            if (colsMenu) colsMenu.classList.remove('show');
+        } else if (!statusMenu.contains(e.target)) {
+            statusMenu.classList.remove('show');
+        }
+    }
+    
+    const colsBtn = document.getElementById('equip-cols-btn');
+    const colsMenu = document.getElementById('equip-cols-menu');
+    if (colsBtn && colsMenu) {
+        if (colsBtn.contains(e.target)) {
+            colsMenu.classList.toggle('show');
+            const statusMenu = document.getElementById('equip-status-menu');
+            if (statusMenu) statusMenu.classList.remove('show');
+        } else if (!colsMenu.contains(e.target)) {
+            colsMenu.classList.remove('show');
+        }
+    }
+});
+
+// Search and apply filter
+function applyEquipFilters() {
+    if (!EQUIP_RAW_DATA || EQUIP_RAW_DATA.length === 0) return;
+    
+    const query = (document.getElementById('equip-search').value || '').trim().toLowerCase();
+    const queryTerms = query ? query.split(/\s+/) : [];
+    
+    const selectedStatuses = [];
+    for (const [status, val] of Object.entries(equipStatusSelected)) {
+        if (val) selectedStatuses.push(status);
+    }
+    
+    EQUIP_FILTERED = EQUIP_RAW_DATA.filter(row => {
+        if (selectedStatuses.length > 0) {
+            const rowStatus = String(row['Status'] || '').trim();
+            if (!selectedStatuses.includes(rowStatus)) {
+                return false;
+            }
+        }
+        
+        if (queryTerms.length > 0) {
+            const searchFields = ['Modelo', 'Cliente', 'Localidade', 'Serial'];
+            for (const term of queryTerms) {
+                let termMatched = false;
+                for (const field of searchFields) {
+                    const val = String(row[field] || '').toLowerCase();
+                    if (val.includes(term)) {
+                        termMatched = true;
+                        break;
+                    }
+                }
+                if (!termMatched) return false;
+            }
+        }
+        return true;
+    });
+    
+    sortEquipData();
+    renderEquipTable();
+}
+
+document.getElementById('equip-search').addEventListener('input', function() {
+    equipCurrentPage = 1;
+    applyEquipFilters();
+});
+
+// Sort data
+function sortEquipData() {
+    if (!equipSortCol) return;
+    
+    EQUIP_FILTERED.sort((a, b) => {
+        let va = a[equipSortCol] !== undefined ? a[equipSortCol] : '';
+        let vb = b[equipSortCol] !== undefined ? b[equipSortCol] : '';
+        
+        const isNumeric = equipSortCol === 'Numerador' || equipSortCol === 'Idade do Equipamento';
+        if (isNumeric) {
+            const numA = parseFloat(String(va).replace(/[^\d.-]/g, '')) || 0;
+            const numB = parseFloat(String(vb).replace(/[^\d.-]/g, '')) || 0;
+            return equipSortDir === 'asc' ? numA - numB : numB - numA;
+        }
+        
+        const strA = String(va).toLowerCase().trim();
+        const strB = String(vb).toLowerCase().trim();
+        return equipSortDir === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
+    });
+}
+
+// Render data table
+function renderEquipTable() {
+    const tableHeaderTr = document.getElementById('equip-table-thead-tr');
+    const tbody = document.getElementById('equip-tbody');
+    const countBadge = document.getElementById('equip-count-badge');
+    const tableInfo = document.getElementById('equip-table-info');
+    const pagination = document.getElementById('equip-pagination');
+    
+    if (!tbody || !tableHeaderTr) return;
+    
+    tableHeaderTr.innerHTML = equipColunasExibir.map(col => {
+        let arrow = '';
+        if (col === equipSortCol) {
+            arrow = equipSortDir === 'asc' ? ' ▲' : ' ▼';
+        }
+        return `<th data-col="${col}">${col}${arrow}</th>`;
+    }).join('');
+    
+    tableHeaderTr.querySelectorAll('th').forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.dataset.col;
+            if (equipSortCol === col) {
+                equipSortDir = equipSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                equipSortCol = col;
+                equipSortDir = 'asc';
+            }
+            equipCurrentPage = 1;
+            applyEquipFilters();
+        });
+    });
+    
+    const total = EQUIP_FILTERED.length;
+    countBadge.textContent = total.toLocaleString('pt-BR');
+    
+    if (total === 0) {
+        tbody.innerHTML = `<tr><td colspan="${equipColunasExibir.length}" style="text-align: center; color: var(--text-muted); padding: 40px;">Nenhum equipamento encontrado.</td></tr>`;
+        tableInfo.textContent = "Mostrando 0–0 de 0";
+        pagination.innerHTML = '';
+        return;
+    }
+    
+    const start = (equipCurrentPage - 1) * equipPageSize;
+    const end = Math.min(start + equipPageSize, total);
+    const pageData = EQUIP_FILTERED.slice(start, end);
+    
+    tbody.innerHTML = pageData.map((row, rowIdx) => {
+        return `<tr data-row-idx="${start + rowIdx}">${
+            equipColunasExibir.map(col => {
+                const cellVal = row[col] !== undefined ? row[col] : '';
+                return `<td title="${cellVal}">${cellVal}</td>`;
+            }).join('')
+        }</tr>`;
+    }).join('');
+    
+    tbody.querySelectorAll('td').forEach(td => {
+        td.addEventListener('dblclick', function(e) {
+            const text = (this.textContent || '').trim();
+            if (text === '') return;
+            navigator.clipboard.writeText(text).then(() => {
+                showCopyFeedback(e.clientX, e.clientY, text);
+            }).catch(err => {
+                console.error("Cópia falhou:", err);
+            });
+        });
+    });
+    
+    tableInfo.textContent = `Mostrando ${start + 1}–${end} de ${total}`;
+    
+    const pages = Math.ceil(total / equipPageSize);
+    let h = '';
+    h += `<button ${equipCurrentPage <= 1 ? 'disabled' : ''} onclick="goEquipPage(${equipCurrentPage - 1})">‹</button>`;
+    for (let i = 1; i <= pages; i++) {
+        if (pages > 7 && i > 2 && i < pages - 1 && Math.abs(i - equipCurrentPage) > 1) {
+            if (i === 3 || i === pages - 2) h += '<button disabled>…</button>';
+            continue;
+        }
+        h += `<button class="${i === equipCurrentPage ? 'active' : ''}" onclick="goEquipPage(${i})">${i}</button>`;
+    }
+    h += `<button ${equipCurrentPage >= pages ? 'disabled' : ''} onclick="goEquipPage(${equipCurrentPage + 1})">›</button>`;
+    pagination.innerHTML = h;
+}
+
+window.goEquipPage = function(p) {
+    equipCurrentPage = p;
+    renderEquipTable();
+};
+
+// copy feedback visual effect
+function showCopyFeedback(x, y, text) {
+    const el = document.createElement('div');
+    el.className = 'copy-feedback';
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.textContent = `Copiado: "${text.substring(0, 15)}${text.length > 15 ? '...' : ''}"`;
+    document.body.appendChild(el);
+    setTimeout(() => {
+        el.remove();
+    }, 1500);
+}
+
+// Export filtered data to XLSX
+document.getElementById('equip-export-btn').addEventListener('click', function() {
+    if (!EQUIP_FILTERED || EQUIP_FILTERED.length === 0) {
+        alert("Não há dados para exportar!");
+        return;
+    }
+    
+    this.disabled = true;
+    const originalText = this.textContent;
+    this.textContent = "Exportando...";
+    
+    try {
+        const exportData = EQUIP_FILTERED.map(row => {
+            const mappedRow = {};
+            equipColunasExibir.forEach(col => {
+                mappedRow[col] = row[col] !== undefined ? row[col] : '';
+            });
+            return mappedRow;
+        });
+        
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Equipamentos");
+        XLSX.writeFile(workbook, `equipamentos_filtrados_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (err) {
+        console.error(err);
+        alert("Erro ao exportar: " + err.message);
+    } finally {
+        this.disabled = false;
+        this.textContent = originalText;
+    }
+});
+
+// Initialize everything
+initBacklog();
+initEquipamentos();
+initEquipColsFilter();
+
+// Database Reset Handlers (IndexedDB local cache cleaners)
+document.getElementById('db-backlog-reset').addEventListener('click', async () => {
+    if(confirm("Deseja limpar os dados do backlog salvos no navegador? O sistema tentará recarregar o arquivo 'backlog.csv' padrão da pasta raiz.")) {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            loadingScreen.querySelector('.loading-text').textContent = "Limpando cache do backlog...";
+            loadingScreen.classList.remove('hidden');
+        }
+        await dbStore.clear("backlog");
+        await initBacklog();
+        if (loadingScreen) loadingScreen.classList.add('hidden');
+    }
+});
+
+document.getElementById('db-equip-reset').addEventListener('click', async () => {
+    if(confirm("Deseja limpar os dados de equipamentos salvos no navegador? O sistema tentará recarregar o arquivo 'equipamentos.xlsx' ou 'equipamentos.csv' padrão da pasta raiz.")) {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            loadingScreen.querySelector('.loading-text').textContent = "Limpando cache de equipamentos...";
+            loadingScreen.classList.remove('hidden');
+        }
+        await dbStore.clear("equipamentos");
+        await initEquipamentos();
+        if (loadingScreen) loadingScreen.classList.add('hidden');
+    }
+});
+</script>
+</body>
+</html>
