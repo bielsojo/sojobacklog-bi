@@ -396,7 +396,8 @@
 <script>
 // ===========================================================
 let RAW_DATA=[], FILTERED=[], CHARTS={};
-const NOW=new Date(), PAGE_SIZE=50;
+let NOW=new Date();
+const PAGE_SIZE=50;
 let currentPage=1, staleFiltered=[], tableSortCol='days', tableSortDir='desc';
 let crossFilters = {}; // { field: { value, label } }
 let kpiFilter = null; // null, 'active', 'solved', 'stale', 'pending'
@@ -405,7 +406,21 @@ let kpiFilter = null; // null, 'active', 'solved', 'stale', 'pending'
 // UTILS
 // ===========================================================
 function clean(s){if(!s)return '';return s.replace(/[\r\n]+/g,' ').trim().replace(/^"|"$/g,'')}
-function parseDate(s){if(!s)return null;const m=s.match(/(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/);if(!m)return null;return new Date(+m[3],+m[2]-1,+m[1],+m[4],+m[5])}
+function parseDate(s) {
+    if (!s) return null;
+    s = s.trim();
+    // Support both DD-MM-YYYY (or DD/MM/YYYY) and YYYY-MM-DD (or YYYY/MM/DD)
+    let m = s.match(/^(\d{2})[-/](\d{2})[-/](\d{4})(?:\s+(\d{2}):(\d{2}))?/);
+    if (m) {
+        return new Date(+m[3], +m[2] - 1, +m[1], +m[4] || 0, +m[5] || 0);
+    }
+    m = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})(?:\s+(\d{2}):(\d{2}))?/);
+    if (m) {
+        return new Date(+m[1], +m[2] - 1, +m[3], +m[4] || 0, +m[5] || 0);
+    }
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+}
 function daysBetween(a,b){if(!a||!b)return 0;const d1=new Date(a.getFullYear(),a.getMonth(),a.getDate());const d2=new Date(b.getFullYear(),b.getMonth(),b.getDate());return Math.round((d2-d1)/864e5)}
 function fmtDate(d){if(!d)return'—';return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})}
 function statusClass(s){const l=(s||'').toLowerCase();if(l.includes('atribuído'))return'atribuido';if(l.includes('pendente'))return'pendente';if(l.includes('solucionado'))return'solucionado';if(l.includes('planejado'))return'planejado';if(l.includes('novo'))return'novo';return''}
@@ -427,6 +442,7 @@ const PALETTE=['#6366f1','#3b82f6','#06b6d4','#22c55e','#a855f7','#ec4899','#f59
 // CSV LOAD & PERSISTENCE
 // ===========================================================
 function processBacklogData(data, filename, dateStr, saveToDb = true) {
+    NOW = new Date(); // Update global NOW when processing new data
     RAW_DATA = data.map(row => {
         const r = {}; for (const k in row) r[clean(k)] = clean(row[k]);
         r._id = (r['ID'] || '').replace(/\s/g, '');
@@ -438,7 +454,7 @@ function processBacklogData(data, filename, dateStr, saveToDb = true) {
         r._openDt = parseDate(r['Data de abertura']);
         r._updDt = parseDate(r['Última atualização'] || r['Ultima atualizacao'] || '');
         r._solTime = parseDuration(r['Estatísticas - Tempo de solução'] || r['Estatisticas - Tempo de solucao'] || '');
-        r._daysInactive = r._updDt ? daysBetween(r._updDt, NOW) : null;
+        r._daysInactive = r._updDt ? Math.max(0, daysBetween(r._updDt, NOW)) : null;
         r._isActive = !r._status.toLowerCase().includes('solucionado') && !r._status.toLowerCase().includes('fechado');
         r._isStale = r._isActive && r._daysInactive !== null && r._daysInactive >= 7;
         return r;
@@ -459,6 +475,7 @@ function processBacklogData(data, filename, dateStr, saveToDb = true) {
 }
 
 async function initBacklog() {
+    NOW = new Date(); // Update global NOW when initializing
     try {
         const cached = await dbStore.get("backlog");
         if (cached && cached.data && cached.data.length > 0) {
