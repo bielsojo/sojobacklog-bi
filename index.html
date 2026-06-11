@@ -1050,7 +1050,7 @@ let equipCurrentPage = 1;
 const equipPageSize = 50;
 let equipSortCol = 'Cliente';
 let equipSortDir = 'asc';
-const EQUIP_COLUNAS_DISPONIVEIS = ['Cliente', 'Localidade', 'Modelo', 'Serial', 'Status', 'Idade do Equipamento', 'Numerador', 'Data de Compra'];
+const EQUIP_COLUNAS_DISPONIVEIS = ['Cliente', 'Localidade', 'Modelo', 'Serial', 'Status', 'Idade do Equipamento', 'Numerador', 'Data de Compra', 'Classificação', 'Classificação Lab'];
 const EQUIP_COLUNAS_PADRAO = ['Cliente', 'Localidade', 'Modelo', 'Serial', 'Status'];
 let equipColunasExibir = [...EQUIP_COLUNAS_PADRAO];
 let equipStatusSelected = {};
@@ -1194,6 +1194,8 @@ function processLoadedEquipamentos(data, filename, dateStr = new Date().toLocale
             else if (kLower === 'idade do equipamento') finalKey = 'Idade do Equipamento';
             else if (kLower === 'numerador') finalKey = 'Numerador';
             else if (kLower === 'data de compra') finalKey = 'Data de Compra';
+            else if (kLower === 'classificação' || kLower === 'classificacao') finalKey = 'Classificação';
+            else if (kLower === 'classificação lab' || kLower === 'classificacao lab' || kLower === 'classificacao_lab' || kLower === 'classificação_lab') finalKey = 'Classificação Lab';
             
             let val = row[k];
             if (val instanceof Date) {
@@ -1445,7 +1447,7 @@ function applyEquipFilters() {
         }
         
         if (queryTerms.length > 0) {
-            const searchFields = ['Modelo', 'Cliente', 'Localidade', 'Serial'];
+            const searchFields = ['Modelo', 'Cliente', 'Localidade', 'Serial', 'Classificação', 'Classificação Lab'];
             for (const term of queryTerms) {
                 let termMatched = false;
                 for (const field of searchFields) {
