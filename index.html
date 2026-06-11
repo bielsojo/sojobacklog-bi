@@ -1111,11 +1111,41 @@ const dbStore = {
 };
 
 // Start Load on execution
+function normalizeEquipRows(data) {
+    return data.map(row => {
+        const normalisedRow = {};
+        for (const k in row) {
+            const kLower = k.trim().toLowerCase();
+            let finalKey = k.trim();
+            if (kLower === 'cliente') finalKey = 'Cliente';
+            else if (kLower === 'localidade') finalKey = 'Localidade';
+            else if (kLower === 'modelo') finalKey = 'Modelo';
+            else if (kLower === 'serial') finalKey = 'Serial';
+            else if (kLower === 'status') finalKey = 'Status';
+            else if (kLower === 'idade do equipamento') finalKey = 'Idade do Equipamento';
+            else if (kLower === 'numerador') finalKey = 'Numerador';
+            else if (kLower === 'data de compra') finalKey = 'Data de Compra';
+            else if (kLower === 'classificação' || kLower === 'classificacao') finalKey = 'Classificação';
+            else if (kLower === 'classificação lab' || kLower === 'classificacao lab' || kLower === 'classificacao_lab' || kLower === 'classificação_lab') finalKey = 'Classificação Lab';
+            
+            let val = row[k];
+            if (val instanceof Date) {
+                const day = String(val.getDate()).padStart(2, '0');
+                const month = String(val.getMonth() + 1).padStart(2, '0');
+                const year = val.getFullYear();
+                val = `${day}/${month}/${year}`;
+            }
+            normalisedRow[finalKey] = val;
+        }
+        return normalisedRow;
+    });
+}
+
 async function initEquipamentos() {
     try {
         const cached = await dbStore.get("equipamentos");
         if (cached && cached.data && cached.data.length > 0) {
-            EQUIP_RAW_DATA = cached.data;
+            EQUIP_RAW_DATA = normalizeEquipRows(cached.data);
             EQUIP_FILTERED = [...EQUIP_RAW_DATA];
             document.getElementById('equip-base-date').textContent = `Base: ${cached.filename} (${cached.dateStr})`;
             
@@ -1181,35 +1211,7 @@ function showEquipEmptyState() {
 
 // normalise data loaded from Excel or CSV
 function processLoadedEquipamentos(data, filename, dateStr = new Date().toLocaleString('pt-BR'), saveToDb = true) {
-    const normalisedData = data.map(row => {
-        const normalisedRow = {};
-        for (const k in row) {
-            const kLower = k.trim().toLowerCase();
-            let finalKey = k.trim();
-            if (kLower === 'cliente') finalKey = 'Cliente';
-            else if (kLower === 'localidade') finalKey = 'Localidade';
-            else if (kLower === 'modelo') finalKey = 'Modelo';
-            else if (kLower === 'serial') finalKey = 'Serial';
-            else if (kLower === 'status') finalKey = 'Status';
-            else if (kLower === 'idade do equipamento') finalKey = 'Idade do Equipamento';
-            else if (kLower === 'numerador') finalKey = 'Numerador';
-            else if (kLower === 'data de compra') finalKey = 'Data de Compra';
-            else if (kLower === 'classificação' || kLower === 'classificacao') finalKey = 'Classificação';
-            else if (kLower === 'classificação lab' || kLower === 'classificacao lab' || kLower === 'classificacao_lab' || kLower === 'classificação_lab') finalKey = 'Classificação Lab';
-            
-            let val = row[k];
-            if (val instanceof Date) {
-                const day = String(val.getDate()).padStart(2, '0');
-                const month = String(val.getMonth() + 1).padStart(2, '0');
-                const year = val.getFullYear();
-                val = `${day}/${month}/${year}`;
-            }
-            normalisedRow[finalKey] = val;
-        }
-        return normalisedRow;
-    });
-
-    EQUIP_RAW_DATA = normalisedData;
+    EQUIP_RAW_DATA = normalizeEquipRows(data);
     EQUIP_FILTERED = [...EQUIP_RAW_DATA];
     
     if (saveToDb) {
