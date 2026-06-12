@@ -10,6 +10,12 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    </script>
     <style>
         *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
         :root{
@@ -204,6 +210,730 @@
         .dropdown-action-btn:hover{color:var(--text-primary)}
         .copy-feedback{position:absolute;background:var(--success);color:#fff;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;pointer-events:none;z-index:1000;box-shadow:var(--shadow);animation:fadeInOut 1.5s forwards}
         @keyframes fadeInOut{0%{opacity:0;transform:translateY(10px)}15%{opacity:1;transform:translateY(0)}85%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-10px)}}
+
+        /* =========================================================== */
+        /* LAUDOS TAB STYLES (Scoped under #tab-laudos) */
+        /* =========================================================== */
+        #tab-laudos {
+            --font-heading: 'Inter', -apple-system, sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --bg-app: var(--bg-primary);
+            --bg-card-laudo: var(--bg-card);
+            --bg-card-hover-laudo: var(--bg-card-hover);
+            --border-color: var(--border);
+            --text-primary-laudo: var(--text-primary);
+            --text-secondary-laudo: var(--text-secondary);
+            --text-muted-laudo: var(--text-muted);
+            --color-primary: var(--accent);
+            --color-primary-hover: var(--accent);
+            --color-primary-light: rgba(99, 102, 241, 0.15);
+            --color-success: var(--success);
+            --color-success-light: var(--success-bg);
+            --color-warning: var(--warning);
+            --color-warning-light: var(--warning-bg);
+            --color-danger: var(--danger);
+            --color-danger-hover: var(--danger);
+            --color-danger-light: var(--danger-bg);
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+            --transition-fast: 0.15s ease;
+            --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            background-color: var(--bg-app);
+            color: var(--text-primary-laudo);
+            font-family: var(--font-body);
+            min-height: 100vh;
+            transition: background-color var(--transition-normal), color var(--transition-normal);
+            padding: 0;
+        }
+
+        #tab-laudos[data-theme="light"] {
+            --bg-app: #f1f5f9;
+            --bg-card-laudo: #ffffff;
+            --bg-card-hover-laudo: #f8fafc;
+            --border-color: rgba(99, 102, 241, 0.15);
+            --text-primary-laudo: #0f172a;
+            --text-secondary-laudo: #475569;
+            --text-muted-laudo: #94a3b8;
+            --color-primary: var(--accent);
+            --color-primary-light: rgba(99, 102, 241, 0.08);
+            --color-success: #22c55e;
+            --color-success-light: rgba(34, 197, 94, 0.08);
+            --color-warning-light: rgba(245, 158, 11, 0.08);
+            --color-danger-light: rgba(239, 68, 68, 0.08);
+        }
+
+        .laudos-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 24px 40px 60px;
+        }
+
+        #tab-laudos header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            background: none;
+            position: relative;
+            backdrop-filter: none;
+            top: auto;
+            z-index: auto;
+        }
+
+        #tab-laudos .brand-section h1 {
+            font-family: var(--font-heading);
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-primary-laudo);
+        }
+
+        #tab-laudos .brand-icon {
+            color: var(--color-success);
+        }
+
+        #tab-laudos .brand-section h1 span {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #tab-laudos .brand-section p {
+            color: var(--text-secondary-laudo);
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+
+        #tab-laudos .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        #tab-laudos .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 9px 18px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+        }
+
+        #tab-laudos .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            color: #ffffff;
+            border: none;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+        #tab-laudos .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px var(--accent-glow);
+        }
+
+        #tab-laudos .btn-secondary {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+        }
+        #tab-laudos .btn-secondary:hover {
+            background: var(--accent);
+            color: #ffffff;
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+
+        #tab-laudos .btn-danger {
+            background-color: var(--color-danger-light);
+            border-color: var(--color-danger);
+            color: var(--color-danger);
+        }
+        #tab-laudos .btn-danger:hover {
+            background-color: var(--color-danger);
+            color: #ffffff;
+        }
+
+        #tab-laudos .btn-icon-only {
+            padding: 7px;
+            border-radius: 8px;
+        }
+
+        #tab-laudos .card {
+            background-color: var(--bg-card-laudo);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-lg);
+            transition: var(--transition);
+        }
+        #tab-laudos .card:hover {
+            border-color: var(--border-hover);
+        }
+
+        #tab-laudos .card-title {
+            font-family: var(--font-heading);
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-primary-laudo);
+        }
+
+        #tab-laudos .icon-accent {
+            color: var(--accent);
+        }
+
+        #tab-laudos .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        #tab-laudos .settings-horizontal-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.25rem;
+        }
+
+        @media (max-width: 1024px) {
+            #tab-laudos .settings-horizontal-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 600px) {
+            #tab-laudos .settings-horizontal-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        #tab-laudos .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary-laudo);
+            margin-bottom: 0.5rem;
+        }
+
+        #tab-laudos .form-control, #tab-laudos select, #tab-laudos textarea {
+            width: 100%;
+            font-family: var(--font-body);
+            font-size: 12px;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary-laudo);
+            padding: 7px 12px;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        #tab-laudos .form-control:focus, #tab-laudos select:focus, #tab-laudos textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+            background-color: var(--bg-card);
+        }
+
+        #tab-laudos textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        #tab-laudos .upload-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            #tab-laudos .upload-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        #tab-laudos .upload-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            background-color: var(--bg-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            min-height: 120px;
+        }
+
+        #tab-laudos .upload-zone:hover, #tab-laudos .upload-zone.dragover {
+            border-color: var(--accent);
+            background-color: rgba(99, 102, 241, 0.06);
+        }
+
+        #tab-laudos .upload-zone svg {
+            transition: var(--transition);
+        }
+
+        #tab-laudos .upload-zone:hover svg {
+            transform: translateY(-3px);
+            color: var(--accent) !important;
+        }
+
+        #tab-laudos .upload-zone-text h4 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.15rem;
+            color: var(--text-primary-laudo);
+        }
+
+        #tab-laudos .upload-zone-text p {
+            font-size: 0.75rem;
+        }
+
+        #tab-laudos .workspace-section {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        #tab-laudos .table-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        #tab-laudos .table-wrapper {
+            overflow-x: auto;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-card);
+        }
+
+        #tab-laudos table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 12px;
+        }
+
+        #tab-laudos .table-wrapper table {
+            min-width: 1200px;
+        }
+
+        #tab-laudos th {
+            background-color: var(--bg-secondary);
+            color: var(--text-muted-laudo);
+            font-weight: 700;
+            padding: 11px 14px;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        #tab-laudos td {
+            padding: 9px 14px;
+            border-bottom: 1px solid rgba(42, 45, 58, 0.3);
+            color: var(--text-primary-laudo);
+            vertical-align: middle;
+            background: none;
+        }
+
+        #tab-laudos tr:last-child td {
+            border-bottom: none;
+        }
+
+        #tab-laudos tr:hover td {
+            background-color: rgba(99, 102, 241, 0.04);
+        }
+
+        #tab-laudos .cell-input {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-primary-laudo);
+            padding: 0.35rem 0.5rem;
+            width: 100%;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-family: var(--font-body);
+            transition: all var(--transition-fast);
+        }
+
+        #tab-laudos .cell-input:hover {
+            border-color: var(--border-color);
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        #tab-laudos .cell-input:focus {
+            background-color: var(--bg-secondary);
+            border-color: var(--accent);
+            outline: none;
+        }
+
+        #tab-laudos .cell-select {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary-laudo);
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            width: 100%;
+            outline: none;
+            cursor: pointer;
+        }
+
+        #tab-laudos .cell-select:focus {
+            border-color: var(--accent);
+        }
+
+        #tab-laudos .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        #tab-laudos .badge-success {
+            background-color: var(--color-success-light);
+            color: var(--color-success);
+        }
+
+        #tab-laudos .badge-warning {
+            background-color: var(--color-warning-light);
+            color: var(--color-warning);
+        }
+
+        #tab-laudos .badge-danger {
+            background-color: var(--color-danger-light);
+            color: var(--color-danger);
+        }
+
+        #tab-laudos .badge-muted {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary-laudo);
+        }
+
+        #tab-laudos .uploaded-files-list {
+            margin-top: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        #tab-laudos .uploaded-file-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.35rem 0.625rem;
+            font-size: 0.8rem;
+            color: var(--text-primary-laudo);
+        }
+
+        #tab-laudos .uploaded-file-item button {
+            background: transparent;
+            border: none;
+            color: var(--text-muted-laudo);
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        #tab-laudos .uploaded-file-item button:hover {
+            color: var(--color-danger);
+        }
+
+        #tab-laudos .preview-container {
+            border-top: 1px solid var(--border-color);
+            padding-top: 2rem;
+            margin-top: 1rem;
+        }
+
+        #tab-laudos .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+
+        #tab-laudos .preview-header h2 {
+            color: var(--text-primary-laudo);
+        }
+
+        #tab-laudos .a4-landscape-preview-wrapper {
+            background-color: var(--bg-secondary);
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: center;
+            overflow-x: auto;
+        }
+
+        #tab-laudos .a4-landscape-page {
+            width: 1000px;
+            height: 707px;
+            flex-shrink: 0;
+            background-color: #ffffff;
+            color: #000000;
+            box-shadow: var(--shadow-xl);
+            padding: 40px;
+            position: relative;
+            font-family: Arial, Helvetica, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transform-origin: top center;
+            box-sizing: border-box;
+        }
+
+        #tab-laudos .a4-landscape-page td {
+            color: #000000;
+            background: none;
+        }
+
+        #tab-laudos .pdf-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            height: 65px;
+            padding-bottom: 5px;
+            background: none;
+            border: none;
+            position: relative;
+            top: auto;
+            z-index: auto;
+        }
+
+        #tab-laudos .pdf-logo {
+            height: 48px;
+            max-width: 200px;
+            object-fit: contain;
+        }
+
+        #tab-laudos .pdf-meta-right {
+            text-align: right;
+            font-size: 8px;
+            color: #444;
+            margin-bottom: 8px;
+        }
+
+        #tab-laudos .pdf-meta-right .doc-code {
+            font-weight: bold;
+            font-size: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        #tab-laudos .pdf-meta-right .doc-number {
+            font-size: 20px;
+            font-weight: bold;
+            color: #000000;
+            background-color: #f1f5f9;
+            border: 1.5px solid #000000;
+            padding: 2px 20px;
+            margin-top: 2px;
+            display: inline-block;
+            line-height: 1.2;
+        }
+
+        #tab-laudos .pdf-title-container {
+            text-align: center;
+            margin-top: 0px;
+            position: relative;
+            border-bottom: 2px solid #000000;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+
+        #tab-laudos .pdf-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #000000;
+        }
+
+        #tab-laudos .pdf-date {
+            font-size: 7.5px;
+            color: #000000;
+            position: absolute;
+            right: 0;
+            top: 4px;
+        }
+
+        #tab-laudos .pdf-body-text {
+            font-size: 9.5px;
+            line-height: 1.45;
+            color: #000000;
+            margin: 15px 0;
+            text-align: justify;
+        }
+
+        #tab-laudos .pdf-table-container {
+            flex-grow: 1;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        #tab-laudos .pdf-table {
+            width: 100%;
+            min-width: 100% !important;
+            max-width: 100% !important;
+            border-collapse: collapse;
+        }
+
+        #tab-laudos .pdf-table th {
+            background-color: #f1f5f9;
+            color: #000000;
+            font-weight: bold;
+            border: 1px solid #000000;
+            padding: 5px 3px;
+            text-align: center;
+            font-size: 8px;
+        }
+
+        #tab-laudos .pdf-table td {
+            border: 1px solid #000000;
+            padding: 4px 3px;
+            text-align: center;
+            font-size: 7.5px;
+            color: #000000;
+        }
+
+        #tab-laudos .pdf-footer-banner {
+            height: 40px;
+            width: 100%;
+            margin-top: 2px;
+        }
+
+        #tab-laudos .progress-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(6, 8, 13, 0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-normal);
+        }
+
+        #tab-laudos .progress-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        #tab-laudos .progress-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            width: 400px;
+            text-align: center;
+            box-shadow: var(--shadow-xl);
+        }
+
+        #tab-laudos .progress-card h3 {
+            margin-bottom: 0.5rem;
+            color: #ffffff;
+        }
+
+        #tab-laudos .progress-card p {
+            color: var(--text-secondary-laudo);
+            font-size: 0.85rem;
+            margin-bottom: 1.5rem;
+        }
+
+        #tab-laudos .progress-bar-bg {
+            width: 100%;
+            height: 6px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        #tab-laudos .progress-bar-fill {
+            width: 0%;
+            height: 100%;
+            background-color: var(--color-success);
+            border-radius: 9999px;
+            transition: width var(--transition-fast);
+        }
+
+        #tab-laudos .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.05);
+            border-top: 3px solid var(--color-success);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem auto;
+        }
+
+        #tab-laudos .tooltip {
+            position: relative;
+        }
+
+        #tab-laudos .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            background-color: #0b1329;
+            color: #ffffff;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-sm);
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: all var(--transition-fast);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+        }
+
+        #tab-laudos .tooltip:hover::after {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
     </style>
 </head>
 <body>
@@ -225,6 +955,7 @@
 <div class="tab-bar" id="tab-bar">
     <button class="tab-btn active" data-tab="backlog"><span class="tab-icon">📊</span> Backlog de Chamados</button>
     <button class="tab-btn" data-tab="buscador"><span class="tab-icon">🔍</span> Buscador de Equipamentos</button>
+    <button class="tab-btn" data-tab="laudos"><span class="tab-icon">📄</span> Gerador de Laudos</button>
 </div>
 
 <!-- ======= BACKLOG TAB ======= -->
@@ -393,6 +1124,248 @@
     </div>
 </div>
 
+<!-- ======= LAUDOS TAB ======= -->
+<div class="tab-content hidden" id="tab-laudos">
+    <div class="filters-bar" style="border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 14px 40px; background: rgba(6, 8, 13, 0.5); backdrop-filter: blur(10px);">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <h3 style="font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+                <i data-lucide="file-check-2" style="color: var(--accent); width: 18px; height: 18px;"></i>
+                Gerador de Laudos
+            </h3>
+        </div>
+        <div class="header-actions" style="display: flex; align-items: center; gap: 10px;">
+            <button id="themeToggleBtn" class="btn btn-secondary tooltip" data-tooltip="Alternar Tema" style="padding: 7px 12px; font-size: 12px; border-radius: 8px;">
+                <i data-lucide="sun" id="themeIcon" style="width: 14px; height: 14px;"></i>
+            </button>
+            <button id="clearBtn" class="btn btn-secondary" style="padding: 7px 14px; font-size: 12px; border-radius: 8px;">
+                <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i> Limpar Tudo
+            </button>
+            <button id="generateBtn" class="btn btn-primary" style="padding: 7px 16px; font-size: 12px; border-radius: 8px;">
+                <i data-lucide="download" style="width: 14px; height: 14px;"></i> Gerar Laudo Completo
+            </button>
+        </div>
+    </div>
+    
+    <div class="laudos-container" style="padding: 24px 40px 60px; max-width: 1600px; margin: 0 auto;">
+
+        <!-- Horizontal Settings Panel -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <h3 class="card-title">
+                <i data-lucide="settings" class="icon-accent"></i>
+                Configurações do Laudo
+            </h3>
+            
+            <div class="settings-horizontal-grid">
+                <div class="form-group">
+                    <label for="operationType">Tipo de Operação</label>
+                    <select id="operationType">
+                        <option value="doacao" selected>Doação de Equipamentos</option>
+                        <option value="descarte">Descarte de Equipamentos</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="laudoNumber">Número do Laudo</label>
+                    <input type="text" id="laudoNumber" class="form-control" placeholder="Ex: 505" value="505">
+                </div>
+
+                <div class="form-group">
+                    <label for="destName">Razão Social / Nome Destinatário</label>
+                    <input type="text" id="destName" class="form-control" placeholder="Ex: OMEGA INFORMATICA LTDA" value="OMEGA INFORMATICA INDUSTRIA E COMERCIO LTDA.">
+                </div>
+
+                <div class="form-group">
+                    <label for="destCnpj">CNPJ Destinatário</label>
+                    <input type="text" id="destCnpj" class="form-control" placeholder="Ex: 00.000.000/0001-00" value="07.125.881/0001-16">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0; margin-top: 1rem;">
+                <label for="destAddress">Endereço Destinatário</label>
+                <textarea id="destAddress" rows="2" placeholder="Endereço completo do destinatário">RUA IRMAO LUIZ VICENTE, 292 - CAJURU, CURITIBA - PR, 82.900-140</textarea>
+            </div>
+
+            <div class="form-group" style="display: none;">
+                <!-- Hidden field to store edited text, computed dynamically but editable if needed -->
+                <textarea id="declarationText"></textarea>
+            </div>
+        </div>
+
+        <!-- Main Workspace Flow (Full Width) -->
+        <div class="workspace-section">
+            <!-- Drop Zone for Excel -->
+            <div class="card" style="padding: 1rem 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-secondary);">
+                        Tem uma planilha Excel com os equipamentos?
+                    </span>
+                    <button id="importExcelBtn" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                        <i data-lucide="file-spreadsheet" style="width: 14px; height: 14px;"></i> Importar Planilha
+                    </button>
+                </div>
+                <input type="file" id="fileExcel" accept=".xlsx" style="display: none;">
+            </div>
+
+            <!-- Quad Upload Zone -->
+            <div class="upload-container" style="grid-template-columns: 1fr 1fr 1fr;">
+                <!-- Drop Zone for NFs -->
+                <div id="dropzoneNf" class="upload-zone">
+                    <i data-lucide="file-text" style="width: 28px; height: 28px; color: var(--color-primary);"></i>
+                    <div class="upload-zone-text">
+                        <h4 style="font-size: 0.85rem;">Notas Fiscais (NF)</h4>
+                        <p style="font-size: 0.75rem; color: var(--color-primary); font-weight: 600;">Obrigatório</p>
+                    </div>
+                    <input type="file" id="fileNf" accept=".pdf" multiple style="display: none;">
+                </div>
+
+                <!-- Drop Zone for RATs -->
+                <div id="dropzoneRat" class="upload-zone">
+                    <i data-lucide="clipboard-list" style="width: 28px; height: 28px; color: var(--color-primary);"></i>
+                    <div class="upload-zone-text">
+                        <h4 style="font-size: 0.85rem;">Relatórios (RAT)</h4>
+                        <p style="font-size: 0.75rem; color: var(--color-primary); font-weight: 600;">Obrigatório</p>
+                    </div>
+                    <input type="file" id="fileRat" accept=".pdf" multiple style="display: none;">
+                </div>
+
+                <!-- Drop Zone for Evidences -->
+                <div id="dropzoneEvidence" class="upload-zone">
+                    <i data-lucide="image" style="width: 28px; height: 28px; color: var(--text-muted);"></i>
+                    <div class="upload-zone-text">
+                        <h4 style="font-size: 0.85rem;">Evidências</h4>
+                        <p style="font-size: 0.75rem; color: var(--text-muted);">Opcional</p>
+                    </div>
+                    <input type="file" id="fileEvidence" accept=".pdf,image/*" multiple style="display: none;">
+                </div>
+            </div>
+
+            <!-- Active Uploaded PDF files tracker -->
+            <div class="card" id="filesTrackerCard" style="display: none; padding: 1rem 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h4 style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; font-weight: 600;">
+                        Arquivos Carregados (<span id="uploadedFilesCount">0</span>)
+                    </h4>
+                </div>
+                <div class="uploaded-files-list" id="uploadedFilesList"></div>
+            </div>
+
+            <!-- Interactive Table Card -->
+            <div class="card">
+                <div class="table-header-row">
+                    <h3 class="card-title" style="margin-bottom: 0;">
+                        <i data-lucide="list" class="icon-accent"></i>
+                        Lista de Equipamentos
+                    </h3>
+                    <div>
+                        <button id="addRowBtn" class="btn btn-secondary">
+                            <i data-lucide="plus"></i> Adicionar Equipamento
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 40px; min-width: 40px; text-align: center;">Nº</th>
+                                <th style="width: 250px; min-width: 250px;">Origem / Localidade</th>
+                                <th style="width: 200px; min-width: 200px;">Marca/Modelo</th>
+                                <th style="width: 130px; min-width: 130px;">Serial</th>
+                                <th style="width: 100px; min-width: 100px;">Contador</th>
+                                <th style="width: 90px; min-width: 90px;">Idade</th>
+                                <th style="width: 160px; min-width: 160px;">NF Envio</th>
+                                <th style="width: 160px; min-width: 160px;">NF Devolução</th>
+                                <th style="width: 100px; min-width: 100px; text-align: center;">Observação</th>
+                                <th style="width: 60px; min-width: 60px; text-align: center;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="equipTableBody">
+                            <!-- Dynamic Rows Go Here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Preview Row -->
+        <div class="preview-container">
+            <div class="preview-header">
+                <h2 style="font-family: var(--font-heading); font-size: 1.4rem; font-weight: 700;">
+                    <i data-lucide="eye" style="color: var(--color-primary); vertical-align: middle;"></i> Visualização da Capa (A4 Paisagem)
+                </h2>
+                <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                    Layout idêntico ao laudo oficial consolidado
+                </div>
+            </div>
+            
+            <div class="a4-landscape-preview-wrapper">
+                <div class="a4-landscape-page" id="previewPage">
+                    <!-- Page Header -->
+                    <div class="pdf-header">
+                        <img id="previewLogo" class="pdf-logo" alt="Logo Low Cost">
+                        <div class="pdf-meta-right">
+                            <div class="doc-code">F.8.5A_ATIM002</div>
+                            <div style="margin-top: 5px;">Nº:</div>
+                            <div class="doc-number" id="previewDocNumber">505</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Title Section -->
+                    <div class="pdf-title-container">
+                        <div class="pdf-title" id="previewDocTitle">Declaração de Doação</div>
+                        <div class="pdf-date" id="previewDocDate">quinta-feira, 11 de junho de 2026</div>
+                    </div>
+                    
+                    <!-- Body Text -->
+                    <div class="pdf-body-text" id="previewDocText">
+                        Declaramos a quem possa interessar que a empresa Low Cost Gerenciamento de Serviços Ltda. – CNPJ 01.482.939/0001-00, situada na Av. Tamboré, 1400, Sala 39 – Tamboré – Barueri – SP – Cep: 06.460-000; vem através desta doar os equipamentos abaixo para OMEGA INFORMATICA INDUSTRIA E COMERCIO LTDA.- CNPJ: 07.125.881/0001-16 - Endereço: RUA IRMAO LUIZ VICENTE, 292 - CAJURU, CURITIBA - PR, 82.900-140
+                    </div>
+                    
+                    <!-- Table Section -->
+                    <div class="pdf-table-container">
+                        <table class="pdf-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 3%;">Nº</th>
+                                    <th style="width: 25%;">ORIGEM / LOCALIDADE</th>
+                                    <th style="width: 22%;">MARCA/MODELO</th>
+                                    <th style="width: 12%;">SERIAL</th>
+                                    <th style="width: 8%;">ÚLTIMO CONTADOR</th>
+                                    <th style="width: 9%;">IDADE DO EQUIPAMENTO</th>
+                                    <th style="width: 7%;">NF DE ENVIO</th>
+                                    <th style="width: 7%;">NF DE DEVOLUÇÃO</th>
+                                    <th style="width: 7%;">OBSERVAÇÃO CONTADOR</th>
+                                </tr>
+                            </thead>
+                            <tbody id="previewTableBody">
+                                <!-- Dynamic Preview Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Page Footer -->
+                    <div class="pdf-footer-layout" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+                        <div id="previewFooterAddress" style="font-size: 8px; color: #444; margin-bottom: 5px; font-family: Arial, sans-serif; text-align: center;">Rua Manuel de Nobrega, 986 – 4º andar – Paraiso SP – CEP: 04001-003</div>
+                        <img id="previewFooterBanner" class="pdf-footer-banner" style="width: 100%; object-fit: fill;" alt="Decoração Rodapé">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Notification Overlay -->
+        <div id="progressOverlay" class="progress-overlay">
+            <div class="progress-card">
+                <div class="spinner"></div>
+                <h3 id="progressTitle">Processando arquivos...</h3>
+                <p id="progressSubtitle">Extraindo textos de PDFs e mapeando tabelas.</p>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="progressBarFill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // ===========================================================
 let RAW_DATA=[], FILTERED=[], CHARTS={};
@@ -549,6 +1522,28 @@ document.querySelectorAll('.tab-btn:not(.subtab-btn)').forEach(btn=>{
         if (tgt) {
             tgt.classList.remove('hidden');
             tgt.classList.add('active');
+        }
+        
+        // Update Header Subtitle
+        const subHeader = document.getElementById('header-sub');
+        if (subHeader) {
+            if (btn.dataset.tab === 'backlog') {
+                if (RAW_DATA && RAW_DATA.length > 0) {
+                    dbStore.get("backlog").then(cached => {
+                        const filename = cached ? cached.filename : 'backlog.csv';
+                        const dateStr = cached ? cached.dateStr : 'Padrão da Pasta';
+                        subHeader.textContent = `SojoBacklog — ${RAW_DATA.length} chamados • Base: ${filename} (${dateStr})`;
+                    }).catch(() => {
+                        subHeader.textContent = `SojoBacklog — ${RAW_DATA.length} chamados`;
+                    });
+                } else {
+                    subHeader.textContent = 'SojoBacklog — Carregue um CSV para iniciar';
+                }
+            } else if (btn.dataset.tab === 'buscador') {
+                subHeader.textContent = 'Buscador de Equipamentos — Pesquise e filtre o inventário de ativos';
+            } else if (btn.dataset.tab === 'laudos') {
+                subHeader.textContent = 'Gerador de Laudos — Criação e consolidação inteligente de laudos de descarte e doação';
+            }
         }
     });
 });
@@ -1633,6 +2628,1089 @@ document.getElementById('equip-export-btn').addEventListener('click', function()
 initBacklog();
 initEquipamentos();
 initEquipColsFilter();
+initLaudos();
+
+// ===========================================================
+// LOW COST LAUDOS ASSETS & LOGIC
+// ===========================================================
+const ASSETS = {
+    logo: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAyALkDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3wtgVzOv+N9I0FHWSZri5X/l3txvcfXsPxrznxJ4y8Qalvjjb7JZn+G3Y7iP9puvftiuRtxt3n3rvWBlGPNM8Gvm8Wv3OpteIfiXrut74rd/7PtSfuQMd5Hu/+GKXQ/E2q6IkZtLpjFgEwy/Mh/Dt+FY0lolxnKfN6jg1Y1DR9WsrSOaKESW3lg+bF8xAx3GMiskox0ZxuWIrWqRv6nrGifEnS750ttQ/0K5bpvOY2Ps3b8cV2kc0c0YaNlZSMgg5Br5csG3XeScnByTXYeHtV12ynC6TJI8YOWifmL8c/d6dRUummro7aGY1IyVOaue8mgVm6Ldz32mQ3FyqLM2Q4jJK5Bxxmrc9zBbRh7iaOJMgbpGCjP41z7HuJ3VyxRUUUsc8SyROrowyrKcg/jRLNHBGZJXVEHVmIAH40DJaKpf2tpv/AEELT/v+v+NSSXtrDEkktzEkb/dd3ADfQ0AWaKhjnilhE0ciPERkOpyCPrUdvfWl4WFtdQzFfvCOQNj64oAtUVVe9tY7gW73MImPAjMg3H0460k1/aW8mya7gifGdryBT+tAFuiqsF9aXLFYLmGUjkiOQNj8qW4vbW1IFxcwxE9BJIFz+dAFmiqkeoWU7iOG8gkc/wAKSAk/kafPdQWybp5o4lJwDIwUfrQBYoqkup2EjhEvbZnbgKsqkn9aWTUbGGUxy3tvHIOqvKAR+BNAFyiqX9r6b/0ELT/vãov+D/+BNAFyiqX9r6b/BC0/v8A6/jQ",
+    bannerClassic: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAA6AyADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD2tmOelL5i8fNz7VCZQM8j8BSeaDj5gT71oZlkMSTx060eYCPWqplIyBtGab5xx2oAteaOcY+lHmcd/wAqqi4bbk7ce9QNdYPDqfYUAX/MII5OKSS4w5VQGcds1z8+urHcCGBg0ucEYyc+mKkuvEVnpzPbmRDPnLYB4z/M0AawDuM3L4HURg/zqwZAifL93HauNl8QNPJGIIpW3H5iRj+lPXWL4rtW0YrjufT6cUAdUtxkc8c+tK0wUdTXC6h4g1W1h81rPMYwSyHt/OsiHx27XTpv3KOSSOB/9agD0x7pN7KWIwOeelZlxqA3PslC/wBwY6n8a4e58dW8gSBbmLeW3SlBu/DjqaG1cRzi5nuMTAfu7RNhcJ/ePZR65NAHfQThXKs2ZOpHoMVUivI5YlkRw4YdV6VxWm6tca34hiSBhJGikzGNf3YAUgISeT3PYn6V1tlPFsURsC+Mk7cbcdvegC4ykk7iEUevX8qiIB9ye570onLbtyYJ7kYprFRggg+22gCGRsIehPtWdO5A4OK0pQ+ScLgcngVn3DZP3UP4UAY9wWJI3ZHrWXcb8ODJn+lbNxJnICp9dves1xITJmJcAZOVFAFKJANE1H5znzoe3+9VKOEseMsfT1rVhkA0bUNsSsRNDkBM/wB72qnHJLI4jiiXc3QsoUD6mgCGJG84MF49qsw6VfXDt5 blurFXBZmOFHumf1qDca1FpSpNqTQwqv3Y0Ub39AAOlXvBN3eeMNUbUJI0tdFsXzHAqgLJL1yfXHWgC/r8Fp4V8KPNcbZ9QuD5cG/j5iOoHoBz+VcnYXNxd28b+YFJ4Yk4ANM8V62PFnih3jlQWFrmKAkZ3Y6t+J/TFaujm2ttMKSsmWbcMIMgY45I+lAEJimO7M+7HdRnNNjWVskTMCP4SvNXE1GJUdJApDDHKKQD+VRJc2m75nUgHPMQ5oAt3KSf2Tp6+cf+WzFhGSByODWdlsn/TUGO+Ov5VsXerwx6bYtAqqjNMMBVHGRkdKiD2OrXcYDQQsyqpIjGCe5oAyoXdzzdKv1HNPkWSMqBcEsw5/d9D6VuNZafZKXhuredw4wfJIYY9MgjNUp3V/PIjDsxJGUDHHcnjg0AVXikBKrdqzbc4x1Ppjrmq0RnZSTKEx0DcE1bUOAPmDYxhRCPxFP+0M8yTC1j8pWAKkDGPTpn9aAKjMyMo+05BHOAOD+dTloYlJa8DuFPTGPbsaS6KTMJI4AiAbf9SBn3+tSXSpZyTQmOCY7VKusQXHGewI70AXdWM73zSRTQqDDF8oG4/cHtxWK8kqFQLlG9ePu/XitXU59upyI8IYGGPBK5wdi89KrOSYeDBIxwWLJ8x/SgCdGMse77WhTaAxA2g4HTnPP4VWC3J3OJmjwobEkYU7T39MVKk73LtmBF3HAWMADPYYNF5M1xt2RaaXGHT9y2T2x+fTFAz/9k="
+};
+
+// Global State
+let equipments = [];
+let uploadedFiles = []; // { name, size, buffer, extractedText, type: 'nf' | 'rat' | 'evidence' }
+let nextEquipId = 1;
+
+// Fixed Low Cost corporate data
+const LOW_COST_INFO = {
+    name: "LOWCOST GERENCIAMENTO DE SERVIÇOS LTDA",
+    cnpj: "01.482.939/0001-00",
+    address: "Av. Tamboré, 1400, Sala 39 – Tamboré – Barueri – SP – Cep: 06.460-000",
+    footerAddress: "Rua Manuel de Nobrega, 986 – 4º andar – Paraiso SP – CEP: 04001-003"
+};
+
+// Initialize Laudos Tab
+function initLaudos() {
+    // Icons
+    lucide.createIcons();
+    
+    // Set auto date (Today)
+    const today = new Date();
+    const dateFormatted = formatPortugueseDate(today.toISOString().split('T')[0]);
+    const previewDocDate = document.getElementById("previewDocDate");
+    if (previewDocDate) previewDocDate.innerText = dateFormatted;
+    
+    // Bind Event Listeners
+    const opType = document.getElementById("operationType");
+    if (opType) opType.addEventListener("change", handleOperationChange);
+    const laudoNumber = document.getElementById("laudoNumber");
+    if (laudoNumber) laudoNumber.addEventListener("input", updatePreview);
+    const destName = document.getElementById("destName");
+    if (destName) destName.addEventListener("input", updatePreview);
+    const destCnpj = document.getElementById("destCnpj");
+    if (destCnpj) destCnpj.addEventListener("input", updatePreview);
+    const destAddress = document.getElementById("destAddress");
+    if (destAddress) destAddress.addEventListener("input", updatePreview);
+    
+    // Actions Buttons
+    const addRowBtn = document.getElementById("addRowBtn");
+    if (addRowBtn) addRowBtn.addEventListener("click", addNewRow);
+    const clearBtn = document.getElementById("clearBtn");
+    if (clearBtn) clearBtn.addEventListener("click", clearAll);
+    const generateBtn = document.getElementById("generateBtn");
+    if (generateBtn) generateBtn.addEventListener("click", generateReport);
+    const themeToggleBtn = document.getElementById("themeToggleBtn");
+    if (themeToggleBtn) themeToggleBtn.addEventListener("click", toggleTheme);
+    
+    // Excel Import Event Bind
+    const excelBtn = document.getElementById("importExcelBtn");
+    const excelInput = document.getElementById("fileExcel");
+    if (excelBtn && excelInput) {
+        excelBtn.addEventListener("click", () => excelInput.click());
+        excelInput.addEventListener("change", (e) => {
+            if (e.target.files.length > 0) {
+                handleExcelUpload(e.target.files);
+            }
+        });
+    }
+    
+    // Setup 3 Separate Upload Zones
+    setupUploadZone("dropzoneNf", "fileNf", (files) => handleFilesUpload(files, 'nf'));
+    setupUploadZone("dropzoneRat", "fileRat", (files) => handleFilesUpload(files, 'rat'));
+    setupUploadZone("dropzoneEvidence", "fileEvidence", (files) => handleFilesUpload(files, 'evidence'));
+    
+    // Initial Render
+    renderTable();
+    updatePreview();
+}
+
+// Scoped Theme Toggle
+function toggleTheme() {
+    const tabLaudos = document.getElementById("tab-laudos");
+    if (!tabLaudos) return;
+    const currentTheme = tabLaudos.getAttribute("data-theme") || "dark";
+    const newTheme = currentTheme === "dark" ? "light" : "dark";
+    tabLaudos.setAttribute("data-theme", newTheme);
+    
+    const themeIcon = document.getElementById("themeIcon");
+    if (themeIcon) {
+        if (newTheme === "light") {
+            themeIcon.setAttribute("data-lucide", "moon");
+        } else {
+            themeIcon.setAttribute("data-lucide", "sun");
+        }
+    }
+    lucide.createIcons();
+}
+
+// Operation Type change handler
+function handleOperationChange(e) {
+    const op = e.target.value;
+    const val = op === "doacao" ? "DOAÇÃO" : "DESCARTE";
+    
+    equipments.forEach(eq => {
+        eq.observation = val;
+    });
+    
+    renderTable();
+    updatePreview();
+}
+
+// Drag & Drop Upload Zone Configuration
+function setupUploadZone(zoneId, inputId, handler) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    if (!zone || !input) return;
+    
+    zone.addEventListener("click", () => input.click());
+    
+    zone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        zone.classList.add("dragover");
+    });
+    
+    zone.addEventListener("dragleave", () => {
+        zone.classList.remove("dragover");
+    });
+    
+    zone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        zone.classList.remove("dragover");
+        if (e.dataTransfer.files.length > 0) {
+            handler(e.dataTransfer.files);
+        }
+    });
+    
+    input.addEventListener("change", (e) => {
+        if (e.target.files.length > 0) {
+            handler(e.target.files);
+        }
+    });
+}
+
+// Show/Hide progress spinner
+function toggleProgress(show, title = "", subtitle = "", percent = 0) {
+    const overlay = document.getElementById("progressOverlay");
+    if (!overlay) return;
+    if (show) {
+        document.getElementById("progressTitle").innerText = title;
+        document.getElementById("progressSubtitle").innerText = subtitle;
+        document.getElementById("progressBarFill").style.width = `${percent}%`;
+        overlay.classList.add("active");
+    } else {
+        overlay.classList.remove("active");
+    }
+}
+
+// Process Excel Upload
+function handleExcelUpload(files) {
+    const file = files[0];
+    if (!file) return;
+    
+    toggleProgress(true, "Lendo Planilha Excel", "Carregando dados dos equipamentos...", 20);
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // Extract metadata (Laudo #)
+            const j4Val = worksheet['J4'] ? worksheet['J4'].v : (worksheet['J3'] ? worksheet['J3'].v : null);
+            if (j4Val) {
+                document.getElementById("laudoNumber").value = j4Val;
+            }
+            
+            // Parse table row headers
+            const jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            let startRowIdx = 18;
+            let headerFound = false;
+            
+            for (let i = 0; i < Math.min(30, jsonRows.length); i++) {
+                const row = jsonRows[i];
+                if (row && row.some(cell => typeof cell === 'string' && cell.toUpperCase().includes('SERIAL'))) {
+                    startRowIdx = i;
+                    headerFound = true;
+                    break;
+                }
+            }
+            
+            if (headerFound) {
+                const headers = jsonRows[startRowIdx].map(h => h ? h.toString().toUpperCase().trim() : '');
+                
+                const idxSerial = headers.findIndex(h => h.includes('SERIAL'));
+                const idxOrigem = headers.findIndex(h => h.includes('ORIGEM') || h.includes('LOCALIDADE'));
+                const idxModelo = headers.findIndex(h => h.includes('MARCA') || h.includes('MODELO'));
+                const idxContador = headers.findIndex(h => h.includes('CONTADOR') || h.includes('CÓD.'));
+                const idxIdade = headers.findIndex(h => h.includes('IDADE'));
+                const idxNfEnvio = headers.findIndex(h => h.includes('NF DE ENVIO') || h.includes('NF ENVIO') || h.includes('NF DE SAÍDA') || h.includes('ENVIO'));
+                const idxNfDevolucao = headers.findIndex(h => h.includes('NF DE DEVOLUÇÃO') || h.includes('DEVOLUÇÃO') || h.includes('RETORNO'));
+                
+                equipments = [];
+                nextEquipId = 1;
+                
+                const currentOp = document.getElementById("operationType").value;
+                const opText = currentOp === "doacao" ? "DOAÇÃO" : "DESCARTE";
+                
+                for (let r = startRowIdx + 1; r < jsonRows.length; r++) {
+                    const row = jsonRows[r];
+                    if (!row || !row[idxSerial]) continue;
+                    
+                    const serial = row[idxSerial].toString().trim();
+                    const origin = idxOrigem !== -1 && row[idxOrigem] ? row[idxOrigem].toString().trim() : '';
+                    const model = idxModelo !== -1 && row[idxModelo] ? row[idxModelo].toString().trim() : '';
+                    const counter = idxContador !== -1 && row[idxContador] ? row[idxContador].toString().trim() : '0';
+                    const age = idxIdade !== -1 && row[idxIdade] ? row[idxIdade].toString().trim() : '';
+                    const nfEnvio = idxNfEnvio !== -1 && row[idxNfEnvio] ? row[idxNfEnvio].toString().trim() : '';
+                    const nfDevolucao = idxNfDevolucao !== -1 && row[idxNfDevolucao] ? row[idxNfDevolucao].toString().trim() : '';
+                    
+                    equipments.push({
+                        id: nextEquipId++,
+                        origin: origin,
+                        model: model,
+                        serial: serial,
+                        counter: counter,
+                        age: age,
+                        nfEnvio: nfEnvio,
+                        nfDevolucao: nfDevolucao,
+                        observation: opText,
+                        nfEnvioFile: null,
+                        nfDevolucaoFile: null,
+                        ratFile: null
+                    });
+                }
+            } else {
+                alert("Não foi possível encontrar a linha de cabeçalho na planilha.");
+            }
+            
+            if (equipments.length === 0) addNewRow();
+            
+            autoMatchFiles();
+            renderTable();
+            updatePreview();
+            toggleProgress(false);
+            
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao processar o arquivo Excel.");
+            toggleProgress(false);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+// Process separate uploads for NF, RAT, Evidence
+async function handleFilesUpload(files, type) {
+    if (files.length === 0) return;
+    
+    document.getElementById("filesTrackerCard").style.display = "block";
+    toggleProgress(true, "Processando Documentos", "Lendo arquivos selecionados...", 0);
+    
+    const total = files.length;
+    for (let i = 0; i < total; i++) {
+        const file = files[i];
+        const percent = Math.round((i / total) * 100);
+        toggleProgress(true, "Processando Documentos", `Lendo ${file.name} (${i+1}/${total})...`, percent);
+        
+        try {
+            const buffer = await file.arrayBuffer();
+            let text = "";
+            if (file.type === "application/pdf") {
+                text = await extractTextFromPdf(buffer.slice(0));
+            }
+            
+            // Keep tracker, separate by type
+            if (!uploadedFiles.some(f => f.name === file.name && f.size === file.size)) {
+                uploadedFiles.push({
+                    name: file.name,
+                    size: file.size,
+                    buffer: buffer,
+                    extractedText: text,
+                    type: type // 'nf' | 'rat' | 'evidence'
+                });
+            }
+        } catch (e) {
+            console.error("Error reading file:", file.name, e);
+        }
+    }
+    
+    updateFilesTracker();
+    
+    toggleProgress(true, "Associação Automática", "Mapeando notas fiscais e relatórios técnicos aos equipamentos...", 85);
+    autoMatchFiles();
+    
+    renderTable();
+    updatePreview();
+    toggleProgress(false);
+}
+
+// Text extraction using PDF.js
+function extractTextFromPdf(arrayBuffer) {
+    return new Promise((resolve, reject) => {
+        pdfjsLib.getDocument({ data: arrayBuffer }).promise.then(async (pdf) => {
+            let fullText = "";
+            const maxPages = Math.min(5, pdf.numPages);
+            for (let i = 1; i <= maxPages; i++) {
+                try {
+                    const page = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    const pageText = content.items.map(item => item.str).join(" ");
+                    fullText += pageText + "\n";
+                } catch (e) {
+                    console.error("Error text extraction:", e);
+                }
+            }
+            resolve(fullText);
+        }).catch(err => {
+            reject(err);
+        });
+    });
+}
+
+// Refresh files tracker dashboard
+function updateFilesTracker() {
+    const list = document.getElementById("uploadedFilesList");
+    const count = document.getElementById("uploadedFilesCount");
+    if (!list || !count) return;
+    
+    count.innerText = uploadedFiles.length;
+    list.innerHTML = "";
+    
+    uploadedFiles.forEach((file, index) => {
+        const item = document.createElement("div");
+        item.className = "uploaded-file-item";
+        
+        let typeBadge = "";
+        if (file.type === 'nf') typeBadge = '<span style="font-size: 0.65rem; background-color: var(--color-primary-light); color: var(--text-primary-laudo); padding: 0.1rem 0.3rem; border-radius: 3px; margin-right: 4px;">NF</span>';
+        else if (file.type === 'rat') typeBadge = '<span style="font-size: 0.65rem; background-color: var(--color-success-light); color: var(--color-success); padding: 0.1rem 0.3rem; border-radius: 3px; margin-right: 4px;">RAT</span>';
+        else typeBadge = '<span style="font-size: 0.65rem; background-color: rgba(255,255,255,0.1); color: var(--text-secondary-laudo); padding: 0.1rem 0.3rem; border-radius: 3px; margin-right: 4px;">EVID</span>';
+
+        item.innerHTML = `
+            ${typeBadge}
+            <span>${file.name}</span>
+            <button onclick="removeUploadedFile(${index})">&times;</button>
+        `;
+        list.appendChild(item);
+    });
+    
+    lucide.createIcons();
+}
+
+// Remove uploaded file
+function removeUploadedFile(index) {
+    const file = uploadedFiles[index];
+    if (!file) return;
+    
+    equipments.forEach(eq => {
+        if (eq.nfEnvioFile === file.name) eq.nfEnvioFile = null;
+        if (eq.nfDevolucaoFile === file.name) eq.nfDevolucaoFile = null;
+        if (eq.ratFile === file.name) eq.ratFile = null;
+    });
+    
+    uploadedFiles.splice(index, 1);
+    updateFilesTracker();
+    renderTable();
+    updatePreview();
+    
+    if (uploadedFiles.length === 0) {
+        document.getElementById("filesTrackerCard").style.display = "none";
+    }
+}
+
+// Auto match uploaded files based on type and content
+function autoMatchFiles() {
+    if (uploadedFiles.length === 0 || equipments.length === 0) return;
+    
+    equipments.forEach(eq => {
+        const serialClean = eq.serial ? eq.serial.toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
+        const nfEnvioClean = eq.nfEnvio ? eq.nfEnvio.toUpperCase().replace(/[^0-9]/g, '') : '';
+        const nfDevolucaoClean = eq.nfDevolucao ? eq.nfDevolucao.toUpperCase().replace(/[^0-9]/g, '') : '';
+        
+        if (!serialClean) return;
+        
+        uploadedFiles.forEach(file => {
+            const fileNameUpper = file.name.toUpperCase();
+            const textUpper = file.extractedText.toUpperCase();
+            const textClean = textUpper.replace(/[^A-Z0-9]/g, '');
+            
+            // 1. Match RAT / OS by Serial Number in RAT-type files
+            if (file.type === 'rat') {
+                if (fileNameUpper.includes(serialClean) || textClean.includes(serialClean)) {
+                    if (!eq.ratFile) eq.ratFile = file.name;
+                }
+            }
+            
+            // 2. Match NFs in NF-type files by Invoice Numbers
+            if (file.type === 'nf') {
+                if (nfEnvioClean && (fileNameUpper.includes(nfEnvioClean) || textClean.includes(nfEnvioClean))) {
+                    if (!eq.nfEnvioFile) eq.nfEnvioFile = file.name;
+                }
+                if (nfDevolucaoClean && (fileNameUpper.includes(nfDevolucaoClean) || textClean.includes(nfDevolucaoClean))) {
+                    if (!eq.nfDevolucaoFile) eq.nfDevolucaoFile = file.name;
+                }
+            }
+        });
+    });
+}
+
+// Add equipment row manually
+function addNewRow() {
+    const currentOp = document.getElementById("operationType").value;
+    const opText = currentOp === "doacao" ? "DOAÇÃO" : "DESCARTE";
+    
+    equipments.push({
+        id: nextEquipId++,
+        origin: "",
+        model: "",
+        serial: "",
+        counter: "",
+        age: "",
+        nfEnvio: "",
+        nfDevolucao: "",
+        observation: opText,
+        nfEnvioFile: null,
+        nfDevolucaoFile: null,
+        ratFile: null
+    });
+    
+    renderTable();
+    updatePreview();
+}
+
+function removeRow(id) {
+    equipments = equipments.filter(eq => eq.id !== id);
+    if (equipments.length === 0) {
+        addNewRow();
+    } else {
+        renderTable();
+        updatePreview();
+    }
+}
+
+// Render dynamic elements inside interactive table
+function renderTable() {
+    const tbody = document.getElementById("equipTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    
+    // Create dropdown selections for NF files and RAT files
+    let nfOptions = `<option value="">-- Selecione a NF --</option>`;
+    let ratOptions = `<option value="">-- Selecione o RAT --</option>`;
+    
+    uploadedFiles.forEach(f => {
+        if (f.type === 'nf') {
+            nfOptions += `<option value="${f.name}">${f.name}</option>`;
+        } else if (f.type === 'rat') {
+            ratOptions += `<option value="${f.name}">${f.name}</option>`;
+        }
+    });
+    
+    equipments.forEach((eq, index) => {
+        const tr = document.createElement("tr");
+        
+        tr.innerHTML = `
+            <td style="font-weight: 600; text-align: center;">${index + 1}</td>
+            <td><input type="text" class="cell-input" value="${eq.origin}" oninput="updateCell(${eq.id}, 'origin', this.value)"></td>
+            <td><input type="text" class="cell-input" value="${eq.model}" oninput="updateCell(${eq.id}, 'model', this.value)"></td>
+            <td><input type="text" class="cell-input" value="${eq.serial}" oninput="updateCell(${eq.id}, 'serial', this.value)"></td>
+            <td><input type="text" class="cell-input" value="${eq.counter}" oninput="updateCell(${eq.id}, 'counter', this.value)"></td>
+            <td><input type="text" class="cell-input" value="${eq.age}" oninput="updateCell(${eq.id}, 'age', this.value)"></td>
+            <td>
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <input type="text" class="cell-input" style="font-weight: 500;" value="${eq.nfEnvio}" oninput="updateCell(${eq.id}, 'nfEnvio', this.value)">
+                    <select class="cell-select" onchange="updateCell(${eq.id}, 'nfEnvioFile', this.value)">
+                        ${nfOptions}
+                    </select>
+                </div>
+            </td>
+            <td>
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <input type="text" class="cell-input" style="font-weight: 500;" value="${eq.nfDevolucao}" oninput="updateCell(${eq.id}, 'nfDevolucao', this.value)">
+                    <select class="cell-select" onchange="updateCell(${eq.id}, 'nfDevolucaoFile', this.value)">
+                        ${nfOptions}
+                    </select>
+                </div>
+            </td>
+            <td><span style="font-weight: 600; padding: 0.5rem; display: block; text-align: center; font-size: 0.75rem;">${eq.observation}</span></td>
+            <td>
+                <div style="display: flex; justify-content: center; align-items: center; gap: 0.5rem;">
+                    <button class="btn btn-danger btn-icon-only tooltip" data-tooltip="Remover" onclick="removeRow(${eq.id})">
+                        <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        
+        tbody.appendChild(tr);
+        
+        // Match selects values
+        const selects = tr.querySelectorAll("select");
+        if (eq.nfEnvioFile) selects[0].value = eq.nfEnvioFile;
+        if (eq.nfDevolucaoFile) selects[1].value = eq.nfDevolucaoFile;
+        
+        // Create Status row
+        const trStatus = document.createElement("tr");
+        trStatus.style.backgroundColor = "rgba(11, 19, 41, 0.1)";
+        
+        const badgeEnvio = eq.nfEnvioFile 
+            ? `<span class="badge badge-success"><i data-lucide="check" style="width: 10px; height: 10px;"></i> NF Envio associada</span>` 
+            : `<span class="badge badge-danger"><i data-lucide="x" style="width: 10px; height: 10px;"></i> Sem NF Envio (Obrigatorio)</span>`;
+            
+        const badgeRat = eq.ratFile 
+            ? `<span class="badge badge-success"><i data-lucide="check" style="width: 10px; height: 10px;"></i> RAT associado</span>` 
+            : `<span class="badge badge-danger"><i data-lucide="x" style="width: 10px; height: 10px;"></i> Sem RAT (Obrigatorio)</span>`;
+            
+        trStatus.innerHTML = `
+            <td></td>
+            <td colspan="5" style="padding: 0.35rem 1rem;">
+                <div style="display: flex; gap: 0.75rem; align-items: center;">
+                    ${badgeEnvio}
+                    ${badgeRat}
+                </div>
+            </td>
+            <td colspan="4" style="padding: 0.35rem 1rem; text-align: right;">
+                <span style="font-size: 0.75rem; color: var(--text-secondary-laudo); margin-right: 0.5rem;">Vincular RAT do Equipamento:</span>
+                <select class="cell-select" style="width: 220px; display: inline-block; vertical-align: middle;" onchange="updateCell(${eq.id}, 'ratFile', this.value)">
+                    ${ratOptions}
+                </select>
+            </td>
+        `;
+        
+        tbody.appendChild(trStatus);
+        
+        // Select RAT value
+        const ratSelect = trStatus.querySelector("select");
+        if (eq.ratFile) ratSelect.value = eq.ratFile;
+    });
+    
+    lucide.createIcons();
+}
+
+function base64ToUint8Array(base64Str) {
+    const rawBase64 = base64Str.includes(',') ? base64Str.split(',')[1] : base64Str;
+    const binaryString = atob(rawBase64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+}
+
+// Convert ISO date string to written Portuguese
+function formatPortugueseDate(dateStr) {
+    if (!dateStr) return "";
+    const dateParts = dateStr.split('-');
+    if (dateParts.length !== 3) return dateStr;
+    
+    const year = parseInt(dateParts[0], 10);
+    const month = parseInt(dateParts[1], 10) - 1;
+    const day = parseInt(dateParts[2], 10);
+    
+    const date = new Date(year, month, day);
+    
+    const weekDays = [
+        "domingo", "segunda-feira", "terça-feira", "quarta-feira",
+        "quinta-feira", "sexta-feira", "sábado"
+    ];
+    
+    const months = [
+        "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+        "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
+    ];
+    
+    const weekDay = weekDays[date.getDay()];
+    const dayVal = date.getDate();
+    const monthName = months[date.getMonth()];
+    const yearVal = date.getFullYear();
+    
+    return `${weekDay}, ${dayVal} de ${monthName} de ${yearVal}`;
+}
+
+// Generate the text block containing destination company details
+function generateTextDeclaration() {
+    const destName = document.getElementById("destName").value.trim();
+    const destCnpj = document.getElementById("destCnpj").value.trim();
+    const destAddress = document.getElementById("destAddress").value.trim();
+    
+    let base = `Declaramos a quem possa interessar que a empresa Low Cost Gerenciamento de Serviços Ltda. – CNPJ 01.482.939/0001-00, situada na Av. Tamboré, 1400, Sala 39 – Tamboré – Barueri – SP – Cep: 06.460-000; vem através desta doar os equipamentos abaixo`;
+    
+    if (destName) {
+        base += ` para ${destName}`;
+        if (destCnpj) base += `.- CNPJ: ${destCnpj}`;
+        if (destAddress) base += ` - Endereço: ${destAddress}`;
+    } else {
+        base += `.`;
+    }
+    
+    return base;
+}
+
+// Update live preview layout
+function updatePreview() {
+    // Number
+    const number = document.getElementById("laudoNumber").value || "---";
+    document.getElementById("previewDocNumber").innerText = number;
+    
+    // Logo & Banner
+    document.getElementById("previewLogo").src = ASSETS.logo;
+    document.getElementById("previewFooterBanner").src = ASSETS.bannerClassic;
+    
+    // Title
+    document.getElementById("previewDocTitle").innerText = "Declaração de Doação";
+    
+    // Text Declaration
+    const textVal = generateTextDeclaration();
+    document.getElementById("previewDocText").innerText = textVal;
+    document.getElementById("declarationText").value = textVal;
+    
+    // Today's date automatically
+    const today = new Date();
+    const dateFormatted = formatPortugueseDate(today.toISOString().split('T')[0]);
+    document.getElementById("previewDocDate").innerText = dateFormatted;
+    
+    // Address
+    document.getElementById("previewFooterAddress").innerText = LOW_COST_INFO.footerAddress;
+    
+    // Populate preview table rows
+    const tableBody = document.getElementById("previewTableBody");
+    if (tableBody) {
+        tableBody.innerHTML = "";
+        equipments.forEach((eq, index) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td style="text-align: center;">${index + 1}</td>
+                <td>${eq.origin || '-'}</td>
+                <td>${eq.model || '-'}</td>
+                <td style="font-weight: bold;">${eq.serial || '-'}</td>
+                <td style="text-align: center;">${eq.counter || '0'}</td>
+                <td style="text-align: center;">${eq.age || '-'}</td>
+                <td style="text-align: center;">${eq.nfEnvio || '-'}</td>
+                <td style="text-align: center;">${eq.nfDevolucao || '-'}</td>
+                <td style="text-align: center; font-weight: bold;">${eq.observation || '-'}</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    }
+}
+
+// Clear all inputs
+function clearAll() {
+    if (confirm("Tem certeza que deseja limpar os dados do laudo?")) {
+        equipments = [];
+        uploadedFiles = [];
+        nextEquipId = 1;
+        document.getElementById("laudoNumber").value = "";
+        document.getElementById("destName").value = "";
+        document.getElementById("destCnpj").value = "";
+        document.getElementById("destAddress").value = "";
+        
+        // Reset file input elements values
+        document.getElementById("fileExcel").value = "";
+        document.getElementById("fileNf").value = "";
+        document.getElementById("fileRat").value = "";
+        document.getElementById("fileEvidence").value = "";
+        
+        document.getElementById("filesTrackerCard").style.display = "none";
+        
+        renderTable();
+        updatePreview();
+    }
+}
+
+// Consolidated PDF generation client-side using pdf-lib
+async function generateReport() {
+    if (equipments.length === 0) {
+        alert("Adicione pelo menos um equipamento ao laudo.");
+        return;
+    }
+    
+    // 1. Mandatory Files Validations
+    let missingNf = [];
+    let missingRat = [];
+    
+    equipments.forEach((eq, idx) => {
+        if (!eq.nfEnvioFile && eq.nfEnvio && eq.nfEnvio !== '0') {
+            missingNf.push(idx + 1);
+        }
+        if (!eq.ratFile) {
+            missingRat.push(idx + 1);
+        }
+    });
+    
+    if (missingNf.length > 0) {
+        alert(`Geração bloqueada! A(s) Nota(s) Fiscal(is) correspondente(s) aos itens Nº: [ ${missingNf.join(', ')} ] não foram carregadas ou vinculadas.`);
+        return;
+    }
+    
+    if (missingRat.length > 0) {
+        alert(`Geração bloqueada! Os Relatórios Técnicos (RAT) correspondentes aos itens Nº: [ ${missingRat.join(', ')} ] não foram carregados ou vinculados.`);
+        return;
+    }
+    
+    toggleProgress(true, "Gerando Laudo PDF", "Renderizando a capa oficial e carregando anexos...", 10);
+    
+    try {
+        const { PDFDocument, rgb, StandardFonts } = PDFLib;
+        
+        // Create PDF
+        const mergedPdf = await PDFDocument.create();
+        
+        // Cover A4 Landscape Page (Page 1)
+        const coverPage = mergedPdf.addPage([841.89, 595.27]);
+        
+        // Embed assets
+        const logoImg = await mergedPdf.embedJpg(base64ToUint8Array(ASSETS.logo));
+        const bannerImg = await mergedPdf.embedJpg(base64ToUint8Array(ASSETS.bannerClassic));
+        
+        // Embed font
+        const fontNormal = await mergedPdf.embedFont(StandardFonts.Helvetica);
+        const fontBold = await mergedPdf.embedFont(StandardFonts.HelveticaBold);
+        
+        // Draw Header Logo
+        coverPage.drawImage(logoImg, {
+            x: 40,
+            y: 508,
+            width: 178,
+            height: 48
+        });
+        
+        // Draw Top Right Meta
+        const metaText = "F.8.5A_ATIM002";
+        const metaW = fontBold.widthOfTextAtSize(metaText, 6);
+        coverPage.drawText(metaText, {
+            x: 695 + (110 - metaW) / 2,
+            y: 544,
+            size: 6,
+            font: fontBold,
+            color: rgb(0.2, 0.2, 0.2)
+        });
+        
+        const labelText = "Nº:";
+        const labelW = fontBold.widthOfTextAtSize(labelText, 8);
+        coverPage.drawText(labelText, {
+            x: 695 + (110 - labelW) / 2,
+            y: 532,
+            size: 8,
+            font: fontBold,
+            color: rgb(0, 0, 0)
+        });
+        
+        const numText = document.getElementById("laudoNumber").value || "000";
+        // Draw a light gray box for the number
+        coverPage.drawRectangle({
+            x: 695,
+            y: 505,
+            width: 110,
+            height: 22,
+            color: rgb(0.95, 0.95, 0.95),
+            borderColor: rgb(0, 0, 0),
+            borderWidth: 1.5
+        });
+        
+        const numW = fontBold.widthOfTextAtSize(numText, 14);
+        coverPage.drawText(numText, {
+            x: 695 + (110 - numW) / 2,
+            y: 512,
+            size: 14,
+            font: fontBold,
+            color: rgb(0, 0, 0)
+        });
+        
+        // Draw Header bottom line
+        coverPage.drawLine({
+            start: { x: 40, y: 472 },
+            end: { x: 801.89, y: 472 },
+            thickness: 2,
+            color: rgb(0, 0, 0)
+        });
+        
+        // Title: always "Declaração de Doação"
+        const titleText = "Declaração de Doação";
+        const titleWidth = fontBold.widthOfTextAtSize(titleText, 20);
+        coverPage.drawText(titleText, {
+            x: (841.89 - titleWidth) / 2,
+            y: 512,
+            size: 20,
+            font: fontBold,
+            color: rgb(0, 0, 0)
+        });
+        
+        // Date
+        const today = new Date();
+        const dateText = formatPortugueseDate(today.toISOString().split('T')[0]);
+        const dateWidth = fontNormal.widthOfTextAtSize(dateText, 7.5);
+        coverPage.drawText(dateText, {
+            x: 801.89 - dateWidth,
+            y: 483,
+            size: 7.5,
+            font: fontNormal,
+            color: rgb(0, 0, 0)
+        });
+        
+        // Paragraph text formatting
+        const decText = generateTextDeclaration();
+        const paragraphs = decText.split('\n');
+        let currentY = currentY = 445;
+        
+        paragraphs.forEach(p => {
+            const words = p.split(' ');
+            let line = '';
+            const maxWidth = 762;
+            
+            for (let n = 0; n < words.length; n++) {
+                const testLine = line + words[n] + ' ';
+                const testWidth = fontNormal.widthOfTextAtSize(testLine, 9.5);
+                if (testWidth > maxWidth && n > 0) {
+                    coverPage.drawText(line.trim(), {
+                        x: 40,
+                        y: currentY,
+                        size: 9.5,
+                        font: fontNormal,
+                        color: rgb(0, 0, 0)
+                    });
+                    line = words[n] + ' ';
+                    currentY -= 14;
+                } else {
+                    line = testLine;
+                }
+            }
+            if (line.trim().length > 0) {
+                coverPage.drawText(line.trim(), {
+                    x: 40,
+                    y: currentY,
+                    size: 9.5,
+                    font: fontNormal,
+                    color: rgb(0, 0, 0)
+                });
+                currentY -= 18;
+            }
+        });
+        
+        // Table layout definitions
+        const colWidths = [20, 185, 175, 90, 60, 65, 55, 55, 57]; // total 762
+        const colHeaders = [
+            ["Nº"],
+            ["ORIGEM /", "LOCALIDADE"],
+            ["MARCA/MODELO"],
+            ["SERIAL"],
+            ["ÚLTIMO", "CONTADOR"],
+            ["IDADE DO", "EQUIPAMENTO"],
+            ["NF DE", "ENVIO"],
+            ["NF DE", "DEVOLUÇÃO"],
+            ["OBSERVAÇÃO", "CONTADOR"]
+        ];
+        const tableStartX = 40;
+        let tableY = currentY - 5;
+        const headerHeight = 22;
+        
+        // Header rectangle
+        coverPage.drawRectangle({
+            x: tableStartX,
+            y: tableY - headerHeight,
+            width: 762,
+            height: headerHeight,
+            color: rgb(0.95, 0.96, 0.98),
+            borderColor: rgb(0, 0, 0),
+            borderWidth: 1
+        });
+        
+        let curX = tableStartX;
+        colHeaders.forEach((lines, idx) => {
+            const colW = colWidths[idx];
+            const size = 6.5;
+            
+            // Center text block vertically
+            const totalTextHeight = lines.length * size + (lines.length - 1) * 2;
+            const startY = tableY - (headerHeight - totalTextHeight) / 2 - size;
+            
+            lines.forEach((lineText, lineIdx) => {
+                const textW = fontBold.widthOfTextAtSize(lineText, size);
+                coverPage.drawText(lineText, {
+                    x: curX + (colW - textW) / 2,
+                    y: startY - lineIdx * (size + 2),
+                    size: size,
+                    font: fontBold,
+                    color: rgb(0, 0, 0)
+                });
+            });
+            
+            // Draw column separator lines
+            if (idx > 0) {
+                coverPage.drawLine({
+                    start: { x: curX, y: tableY },
+                    end: { x: curX, y: tableY - headerHeight },
+                    thickness: 1,
+                    color: rgb(0, 0, 0)
+                });
+            }
+            curX += colW;
+        });
+        
+        tableY -= headerHeight;
+        
+        // Draw rows
+        equipments.forEach((eq, index) => {
+            coverPage.drawRectangle({
+                x: tableStartX,
+                y: tableY - 16,
+                width: 762,
+                height: 16,
+                color: rgb(1, 1, 1),
+                borderColor: rgb(0, 0, 0),
+                borderWidth: 1
+            });
+            
+            const vals = [
+                (index + 1).toString(),
+                eq.origin || '',
+                eq.model || '',
+                eq.serial || '',
+                eq.counter || '0',
+                eq.age || '',
+                eq.nfEnvio || '',
+                eq.nfDevolucao || '',
+                eq.observation || ''
+            ];
+            
+            let curX = tableStartX;
+            vals.forEach((val, idx) => {
+                const colW = colWidths[idx];
+                const isBold = idx === 3 || idx === 8;
+                const font = isBold ? fontBold : fontNormal;
+                const size = idx === 1 || idx === 2 ? 7 : 7.5;
+                
+                // Truncate text if it overflows columns
+                let displayVal = val;
+                const maxChars = idx === 1 ? 40 : (idx === 2 ? 35 : 20);
+                if (displayVal.length > maxChars) {
+                    displayVal = displayVal.substring(0, maxChars - 3) + "...";
+                }
+                
+                const textW = font.widthOfTextAtSize(displayVal, size);
+                
+                // Align text
+                const alignX = curX + (colW - textW) / 2;
+                
+                coverPage.drawText(displayVal, {
+                    x: alignX,
+                    y: tableY - 11,
+                    size: size,
+                    font: font,
+                    color: rgb(0, 0, 0)
+                });
+                
+                // Draw inner column borders
+                if (idx > 0) {
+                    coverPage.drawLine({
+                        start: { x: curX, y: tableY },
+                        end: { x: curX, y: tableY - 16 },
+                        thickness: 1,
+                        color: rgb(0, 0, 0)
+                    });
+                }
+                curX += colW;
+            });
+            
+            tableY -= 16;
+        });
+        
+        // Draw Footer Centralized Address
+        const fAddress = LOW_COST_INFO.footerAddress;
+        const fAddressW = fontNormal.widthOfTextAtSize(fAddress, 8);
+        coverPage.drawText(fAddress, {
+            x: (841.89 - fAddressW) / 2,
+            y: 76,
+            size: 8,
+            font: fontNormal,
+            color: rgb(0.2, 0.2, 0.2)
+        });
+        
+        // Draw Extended Footer Banner (spanning de margem a margem)
+        coverPage.drawImage(bannerImg, {
+            x: 40,
+            y: 10,
+            width: 762,
+            height: 57.15
+        });
+        
+        // 3. Document merging
+        toggleProgress(true, "Mesclando Arquivos", "Copiando páginas das Notas Fiscais e RATs...", 40);
+        
+        // Unique NF Envio
+        const uniqueNfEnvioFiles = new Set();
+        equipments.forEach(eq => {
+            if (eq.nfEnvioFile) uniqueNfEnvioFiles.add(eq.nfEnvioFile);
+        });
+
+        // Unique NF Devolucao
+        const uniqueNfDevolucaoFiles = new Set();
+        equipments.forEach(eq => {
+            if (eq.nfDevolucaoFile) uniqueNfDevolucaoFiles.add(eq.nfDevolucaoFile);
+        });
+        
+        let stepCount = 0;
+        const totalSteps = uniqueNfEnvioFiles.size + uniqueNfDevolucaoFiles.size + equipments.length;
+        
+        // Merge NF Envio
+        for (const nfName of uniqueNfEnvioFiles) {
+            stepCount++;
+            const percent = 40 + Math.round((stepCount / totalSteps) * 40);
+            toggleProgress(true, "Mesclando Arquivos", `Mesclando nota de envio: ${nfName}...`, percent);
+            
+            const fileObj = uploadedFiles.find(f => f.name === nfName);
+            if (fileObj) {
+                const extDoc = await PDFDocument.load(fileObj.buffer.slice(0));
+                const pages = await mergedPdf.copyPages(extDoc, extDoc.getPageIndices());
+                pages.forEach(p => mergedPdf.addPage(p));
+            }
+        }
+
+        // Merge NF Devolucao
+        for (const nfName of uniqueNfDevolucaoFiles) {
+            stepCount++;
+            const percent = 40 + Math.round((stepCount / totalSteps) * 40);
+            toggleProgress(true, "Mesclando Arquivos", `Mesclando nota de retorno: ${nfName}...`, percent);
+            
+            const fileObj = uploadedFiles.find(f => f.name === nfName);
+            if (fileObj) {
+                const extDoc = await PDFDocument.load(fileObj.buffer.slice(0));
+                const pages = await mergedPdf.copyPages(extDoc, extDoc.getPageIndices());
+                pages.forEach(p => mergedPdf.addPage(p));
+            }
+        }
+        
+        // RATs
+        for (let i = 0; i < equipments.length; i++) {
+            const eq = equipments[i];
+            stepCount++;
+            const percent = 40 + Math.round((stepCount / totalSteps) * 40);
+            
+            if (eq.ratFile) {
+                toggleProgress(true, "Mesclando Arquivos", `Mesclando RAT (${i+1}/${equipments.length}): ${eq.ratFile}...`, percent);
+                const fileObj = uploadedFiles.find(f => f.name === eq.ratFile);
+                if (fileObj) {
+                    const extDoc = await PDFDocument.load(fileObj.buffer.slice(0));
+                    const pages = await mergedPdf.copyPages(extDoc, extDoc.getPageIndices());
+                    pages.forEach(p => mergedPdf.addPage(p));
+                }
+            }
+        }
+        
+        // Evidences
+        const evidenceFiles = uploadedFiles.filter(f => f.type === 'evidence');
+        for (const fileObj of evidenceFiles) {
+            toggleProgress(true, "Mesclando Arquivos", `Mesclando evidência: ${fileObj.name}...`, 90);
+            const extDoc = await PDFDocument.load(fileObj.buffer.slice(0));
+            const pages = await mergedPdf.copyPages(extDoc, extDoc.getPageIndices());
+            pages.forEach(p => mergedPdf.addPage(p));
+        }
+        
+        // Save and Download
+        toggleProgress(true, "Finalizando PDF", "Gerando laudo consolidado para download...", 95);
+        
+        const pdfBytes = await mergedPdf.save();
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `LAUDO - ${numText}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toggleProgress(false);
+        
+    } catch (e) {
+        console.error(e);
+        alert("Ocorreu um erro ao gerar o PDF. Verifique os logs do console.");
+        toggleProgress(false);
+    }
+}
 
 // Database Reset Handlers (IndexedDB local cache cleaners)
 document.getElementById('db-backlog-reset').addEventListener('click', async () => {
