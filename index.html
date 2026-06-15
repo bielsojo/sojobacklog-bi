@@ -2635,11 +2635,6 @@ document.getElementById('equip-export-btn').addEventListener('click', function()
     }
 });
 
-// Initialize everything
-initBacklog();
-initEquipamentos();
-initEquipColsFilter();
-initLaudos();
 
 // ===========================================================
 // LOW COST LAUDOS ASSETS & LOGIC
@@ -3749,6 +3744,12 @@ document.getElementById('db-equip-reset').addEventListener('click', async () => 
         if (loadingScreen) loadingScreen.classList.add('hidden');
     }
 });
+
+// Initialize everything
+initBacklog();
+initEquipamentos();
+initEquipColsFilter();
+initLaudos();
 </script>
 </body>
 </html>
