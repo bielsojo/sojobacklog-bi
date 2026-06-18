@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Low Cost - Gerador de Laudos</title>
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Dependencies (Client-side) -->
+    <!-- SheetJS (Excel parser) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- PDF-Lib (PDF Merger/Generator) -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <!-- PDF.js (PDF Text Extractor) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script>
+        // Use a Blob URL containing importScripts to bypass same-origin restrictions for Web Workers on GitHub Pages
+        (function() {
+            try {
+                const workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+                const blob = new Blob(['importScripts("' + workerSrc + '");'], { type: 'application/javascript' });
+                pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+            } catch (e) {
+                console.error("Error setting up PDF.js worker:", e);
+                // Fallback to CDN URL directly if Blob creation fails
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header>
+            <div class="brand-section">
+                <h1>
+                    <img src="assets.js" id="logoHeader" style="height: 32px; display: none;"> <!-- Hidden placeholder, handled by JS -->
+                    <i data-lucide="file-check-2" class="brand-icon"></i>
+                    <span>Low Cost</span> Gerador de Laudos
+                </h1>
+                <p>Criação e consolidação inteligente de laudos de descarte e doação</p>
+            </div>
+            <div class="header-actions">
+                <button id="themeToggleBtn" class="btn btn-secondary tooltip" data-tooltip="Alternar Tema">
+                    <i data-lucide="sun" id="themeIcon"></i>
+                </button>
+                <button id="clearBtn" class="btn btn-secondary">
+                    <i data-lucide="rotate-ccw"></i> Limpar Tudo
+                </button>
+                <button id="generateBtn" class="btn btn-primary">
+                    <i data-lucide="download"></i> Gerar Laudo Completo
+                </button>
+            </div>
+        </header>
+
+        <!-- Horizontal Settings Panel -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <h3 class="card-title">
+                <i data-lucide="settings" class="icon-accent"></i>
+                Configurações do Laudo
+            </h3>
+            
+            <div class="settings-horizontal-grid">
+                <div class="form-group">
+                    <label for="operationType">Tipo de Operação</label>
+                    <select id="operationType">
+                        <option value="doacao" selected>Doação de Equipamentos</option>
+                        <option value="descarte">Descarte de Equipamentos</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="laudoNumber">Número do Laudo</label>
+                    <input type="text" id="laudoNumber" class="form-control" placeholder="Ex: 505" value="505">
+                </div>
+
+                <div class="form-group">
+                    <label for="destName">Razão Social / Nome Destinatário</label>
+                    <input type="text" id="destName" class="form-control" placeholder="Ex: OMEGA INFORMATICA LTDA" value="OMEGA INFORMATICA INDUSTRIA E COMERCIO LTDA.">
+                </div>
+
+                <div class="form-group">
+                    <label for="destCnpj">CNPJ Destinatário</label>
+                    <input type="text" id="destCnpj" class="form-control" placeholder="Ex: 00.000.000/0001-00" value="07.125.881/0001-16">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0; margin-top: 1rem;">
+                <label for="destAddress">Endereço Destinatário</label>
+                <textarea id="destAddress" rows="2" placeholder="Endereço completo do destinatário">RUA IRMAO LUIZ VICENTE, 292 - CAJURU, CURITIBA - PR, 82.900-140</textarea>
+            </div>
+
+            <div class="form-group" style="display: none;">
+                <!-- Hidden field to store edited text, computed dynamically but editable if needed -->
+                <textarea id="declarationText"></textarea>
+            </div>
+        </div>
+
+        <!-- Main Workspace Flow (Full Width) -->
+        <div class="workspace-section">
+                <!-- Drop Zone for Excel -->
+                <div class="card" style="padding: 1rem 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-secondary);">
+                            Tem uma planilha Excel com os equipamentos?
+                        </span>
+                        <button id="importExcelBtn" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                            <i data-lucide="file-spreadsheet" style="width: 14px; height: 14px;"></i> Importar Planilha
+                        </button>
+                    </div>
+                    <input type="file" id="fileExcel" accept=".xlsx" style="display: none;">
+                </div>
+
+                <!-- Quad Upload Zone -->
+                <div class="upload-container" style="grid-template-columns: 1fr 1fr 1fr;">
+                    <!-- Drop Zone for NFs -->
+                    <div id="dropzoneNf" class="upload-zone">
+                        <i data-lucide="file-text" style="width: 28px; height: 28px; color: var(--color-primary);"></i>
+                        <div class="upload-zone-text">
+                            <h4 style="font-size: 0.85rem;">Notas Fiscais (NF)</h4>
+                            <p style="font-size: 0.75rem; color: var(--color-primary); font-weight: 600;">Obrigatório</p>
+                        </div>
+                        <input type="file" id="fileNf" accept=".pdf" multiple style="display: none;">
+                    </div>
+
+                    <!-- Drop Zone for RATs -->
+                    <div id="dropzoneRat" class="upload-zone">
+                        <i data-lucide="clipboard-list" style="width: 28px; height: 28px; color: var(--color-primary);"></i>
+                        <div class="upload-zone-text">
+                            <h4 style="font-size: 0.85rem;">Relatórios (RAT)</h4>
+                            <p style="font-size: 0.75rem; color: var(--color-primary); font-weight: 600;">Obrigatório</p>
+                        </div>
+                        <input type="file" id="fileRat" accept=".pdf" multiple style="display: none;">
+                    </div>
+
+                    <!-- Drop Zone for Evidences -->
+                    <div id="dropzoneEvidence" class="upload-zone">
+                        <i data-lucide="image" style="width: 28px; height: 28px; color: var(--text-muted);"></i>
+                        <div class="upload-zone-text">
+                            <h4 style="font-size: 0.85rem;">Evidências</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Opcional</p>
+                        </div>
+                        <input type="file" id="fileEvidence" accept=".pdf,image/*" multiple style="display: none;">
+                    </div>
+                </div>
+
+                <!-- Active Uploaded PDF files tracker -->
+                <div class="card" id="filesTrackerCard" style="display: none; padding: 1rem 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <h4 style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; font-weight: 600;">
+                            Arquivos Carregados (<span id="uploadedFilesCount">0</span>)
+                        </h4>
+                    </div>
+                    <div class="uploaded-files-list" id="uploadedFilesList"></div>
+                </div>
+
+                <!-- Interactive Table Card -->
+                <div class="card">
+                    <div class="table-header-row">
+                        <h3 class="card-title" style="margin-bottom: 0;">
+                            <i data-lucide="list" class="icon-accent"></i>
+                            Lista de Equipamentos
+                        </h3>
+                        <div>
+                            <button id="addRowBtn" class="btn btn-secondary">
+                                <i data-lucide="plus"></i> Adicionar Equipamento
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px; min-width: 40px; text-align: center;">Nº</th>
+                                    <th style="width: 250px; min-width: 250px;">Origem / Localidade</th>
+                                    <th style="width: 200px; min-width: 200px;">Marca/Modelo</th>
+                                    <th style="width: 130px; min-width: 130px;">Serial</th>
+                                    <th style="width: 100px; min-width: 100px;">Contador</th>
+                                    <th style="width: 90px; min-width: 90px;">Idade</th>
+                                    <th style="width: 160px; min-width: 160px;">NF Envio</th>
+                                    <th style="width: 160px; min-width: 160px;">NF Devolução</th>
+                                    <th style="width: 100px; min-width: 100px; text-align: center;">Observação</th>
+                                    <th style="width: 60px; min-width: 60px; text-align: center;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="equipTableBody">
+                                <!-- Dynamic Rows Go Here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        <!-- Live Preview Row -->
+        <div class="preview-container">
+            <div class="preview-header">
+                <h2 style="font-family: var(--font-heading); font-size: 1.4rem; font-weight: 700;">
+                    <i data-lucide="eye" style="color: var(--color-primary); vertical-align: middle;"></i> Visualização da Capa (A4 Paisagem)
+                </h2>
+                <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                    Layout idêntico ao laudo oficial consolidado
+                </div>
+            </div>
+            
+            <div class="a4-landscape-preview-wrapper">
+                <div class="a4-landscape-page" id="previewPage">
+                    <!-- Page Header -->
+                    <div class="pdf-header">
+                        <img id="previewLogo" class="pdf-logo" alt="Logo Low Cost">
+                        <div class="pdf-meta-right">
+                            <div class="doc-code">F.8.5A_ATIM002</div>
+                            <div style="margin-top: 5px;">Nº:</div>
+                            <div class="doc-number" id="previewDocNumber">505</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Title Section -->
+                    <div class="pdf-title-container">
+                        <div class="pdf-title" id="previewDocTitle">Declaração de Doação</div>
+                        <div class="pdf-date" id="previewDocDate">quinta-feira, 11 de junho de 2026</div>
+                    </div>
+                    
+                    <!-- Body Text -->
+                    <div class="pdf-body-text" id="previewDocText">
+                        Declaramos a quem possa interessar que a empresa Low Cost Gerenciamento de Serviços Ltda. – CNPJ 01.482.939/0001-00, situada na Av. Tamboré, 1400, Sala 39 – Tamboré – Barueri – SP – Cep: 06.460-000; vem através desta doar os equipamentos abaixo para OMEGA INFORMATICA INDUSTRIA E COMERCIO LTDA.- CNPJ: 07.125.881/0001-16 - Endereço: RUA IRMAO LUIZ VICENTE, 292 - CAJURU, CURITIBA - PR, 82.900-140
+                    </div>
+                    
+                    <!-- Table Section -->
+                    <div class="pdf-table-container">
+                        <table class="pdf-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 3%;">Nº</th>
+                                    <th style="width: 25%;">ORIGEM / LOCALIDADE</th>
+                                    <th style="width: 22%;">MARCA/MODELO</th>
+                                    <th style="width: 12%;">SERIAL</th>
+                                    <th style="width: 8%;">ÚLTIMO CONTADOR</th>
+                                    <th style="width: 9%;">IDADE DO EQUIPAMENTO</th>
+                                    <th style="width: 7%;">NF DE ENVIO</th>
+                                    <th style="width: 7%;">NF DE DEVOLUÇÃO</th>
+                                    <th style="width: 7%;">OBSERVAÇÃO CONTADOR</th>
+                                </tr>
+                            </thead>
+                            <tbody id="previewTableBody">
+                                <!-- Dynamic Preview Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Page Footer -->
+                    <div class="pdf-footer-layout" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+                        <div id="previewFooterAddress" style="font-size: 8px; color: #444; margin-bottom: 5px; font-family: Arial, sans-serif; text-align: center;">Rua Manuel de Nobrega, 986 – 4º andar – Paraiso SP – CEP: 04001-003</div>
+                        <img id="previewFooterBanner" class="pdf-footer-banner" style="width: 100%; object-fit: fill;" alt="Decoração Rodapé">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Notification Overlay -->
+    <div id="progressOverlay" class="progress-overlay">
+        <div class="progress-card">
+            <div class="spinner"></div>
+            <h3 id="progressTitle">Processando arquivos...</h3>
+            <p id="progressSubtitle">Extraindo textos de PDFs e mapeando tabelas.</p>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progressBarFill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core Logic Scripts -->
+    <script src="assets.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
