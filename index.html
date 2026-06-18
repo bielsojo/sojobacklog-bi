@@ -3084,6 +3084,18 @@ function removeRow(id) {
     }
 }
 
+function updateCell(id, field, value) {
+    const eq = equipments.find(eq => eq.id === id);
+    if (eq) {
+        eq[field] = value;
+        updatePreview();
+        // If file relationship is updated, re-render the table to refresh status badges
+        if (field === 'nfEnvioFile' || field === 'nfDevolucaoFile' || field === 'ratFile') {
+            renderTable();
+        }
+    }
+}
+
 // Render dynamic elements inside interactive table
 function renderTable() {
     const tbody = document.getElementById("equipTableBody");
@@ -3317,8 +3329,15 @@ function clearAll() {
 
 // Consolidated PDF generation client-side using pdf-lib
 async function generateReport() {
-    if (equipments.length === 0) {
-        alert("Adicione pelo menos um equipamento ao laudo.");
+    // Filter out completely empty rows (where all main fields are empty)
+    const activeEquipments = equipments.filter(eq => 
+        (eq.serial || '').trim() || 
+        (eq.model || '').trim() || 
+        (eq.origin || '').trim()
+    );
+    
+    if (activeEquipments.length === 0) {
+        alert("Adicione pelo menos um equipamento válido ao laudo.");
         return;
     }
     
@@ -3326,7 +3345,7 @@ async function generateReport() {
     let missingNf = [];
     let missingRat = [];
     
-    equipments.forEach((eq, idx) => {
+    activeEquipments.forEach((eq, idx) => {
         if (!eq.nfEnvioFile && eq.nfEnvio && eq.nfEnvio !== '0') {
             missingNf.push(idx + 1);
         }
@@ -3547,7 +3566,7 @@ async function generateReport() {
         tableY -= headerHeight;
         
         // Draw rows
-        equipments.forEach((eq, index) => {
+        activeEquipments.forEach((eq, index) => {
             coverPage.drawRectangle({
                 x: tableStartX,
                 y: tableY - 16,
@@ -3636,18 +3655,18 @@ async function generateReport() {
         
         // Unique NF Envio
         const uniqueNfEnvioFiles = new Set();
-        equipments.forEach(eq => {
+        activeEquipments.forEach(eq => {
             if (eq.nfEnvioFile) uniqueNfEnvioFiles.add(eq.nfEnvioFile);
         });
 
         // Unique NF Devolucao
         const uniqueNfDevolucaoFiles = new Set();
-        equipments.forEach(eq => {
+        activeEquipments.forEach(eq => {
             if (eq.nfDevolucaoFile) uniqueNfDevolucaoFiles.add(eq.nfDevolucaoFile);
         });
         
         let stepCount = 0;
-        const totalSteps = uniqueNfEnvioFiles.size + uniqueNfDevolucaoFiles.size + equipments.length;
+        const totalSteps = uniqueNfEnvioFiles.size + uniqueNfDevolucaoFiles.size + activeEquipments.length;
         
         // Merge NF Envio
         for (const nfName of uniqueNfEnvioFiles) {
@@ -3678,13 +3697,13 @@ async function generateReport() {
         }
         
         // RATs
-        for (let i = 0; i < equipments.length; i++) {
-            const eq = equipments[i];
+        for (let i = 0; i < activeEquipments.length; i++) {
+            const eq = activeEquipments[i];
             stepCount++;
             const percent = 40 + Math.round((stepCount / totalSteps) * 40);
             
             if (eq.ratFile) {
-                toggleProgress(true, "Mesclando Arquivos", `Mesclando RAT (${i+1}/${equipments.length}): ${eq.ratFile}...`, percent);
+                toggleProgress(true, "Mesclando Arquivos", `Mesclando RAT (${i+1}/${activeEquipments.length}): ${eq.ratFile}...`, percent);
                 const fileObj = uploadedFiles.find(f => f.name === eq.ratFile);
                 if (fileObj) {
                     const extDoc = await PDFDocument.load(fileObj.buffer.slice(0));
