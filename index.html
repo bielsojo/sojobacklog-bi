@@ -2499,6 +2499,10 @@
                             style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; font-weight: 600;">
                             Arquivos Carregados (<span id="uploadedFilesCount">0</span>)
                         </h4>
+                        <button id="clearFilesBtn" class="btn btn-secondary btn-sm"
+                            style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Limpar Arquivos
+                        </button>
                     </div>
                     <div class="uploaded-files-list" id="uploadedFilesList"></div>
                 </div>
@@ -3329,7 +3333,7 @@
 
         // IndexedDB Helper
         const DB_NAME = "SojoBacklogDB";
-        const DB_VERSION = 1;
+        const DB_VERSION = 2;
 
         const dbStore = {
             open() {
@@ -3344,6 +3348,9 @@
                         }
                         if (!db.objectStoreNames.contains("equipamentos")) {
                             db.createObjectStore("equipamentos", { keyPath: "id" });
+                        }
+                        if (!db.objectStoreNames.contains("laudos_state")) {
+                            db.createObjectStore("laudos_state", { keyPath: "id" });
                         }
                     };
                 });
@@ -3929,7 +3936,7 @@
         };
 
         // Initialize Laudos Tab
-        function initLaudos() {
+        async function initLaudos() {
             // Icons
             lucide.createIcons();
 
@@ -3939,23 +3946,47 @@
             const previewDocDate = document.getElementById("previewDocDate");
             if (previewDocDate) previewDocDate.innerText = dateFormatted;
 
+            try {
+                const cached = await dbStore.get("laudos_state");
+                if (cached && cached.data) {
+                    const state = cached.data;
+                    if (state.operationType) document.getElementById("operationType").value = state.operationType;
+                    if (state.laudoNumber !== undefined) document.getElementById("laudoNumber").value = state.laudoNumber;
+                    if (state.destName !== undefined) document.getElementById("destName").value = state.destName;
+                    if (state.destCnpj !== undefined) document.getElementById("destCnpj").value = state.destCnpj;
+                    if (state.destAddress !== undefined) document.getElementById("destAddress").value = state.destAddress;
+                    if (state.equipments) equipments = state.equipments;
+                    if (state.uploadedFiles) uploadedFiles = state.uploadedFiles;
+                    if (state.nextEquipId) nextEquipId = state.nextEquipId;
+                    
+                    if (uploadedFiles.length > 0) {
+                        document.getElementById("filesTrackerCard").style.display = "block";
+                        updateFilesTracker();
+                    }
+                }
+            } catch (e) {
+                console.error("Error loading laudos state:", e);
+            }
+
             // Bind Event Listeners
             const opType = document.getElementById("operationType");
-            if (opType) opType.addEventListener("change", handleOperationChange);
+            if (opType) opType.addEventListener("change", (e) => { handleOperationChange(e); saveLaudosState(); });
             const laudoNumber = document.getElementById("laudoNumber");
-            if (laudoNumber) laudoNumber.addEventListener("input", updatePreview);
+            if (laudoNumber) laudoNumber.addEventListener("input", () => { updatePreview(); saveLaudosState(); });
             const destName = document.getElementById("destName");
-            if (destName) destName.addEventListener("input", updatePreview);
+            if (destName) destName.addEventListener("input", () => { updatePreview(); saveLaudosState(); });
             const destCnpj = document.getElementById("destCnpj");
-            if (destCnpj) destCnpj.addEventListener("input", updatePreview);
+            if (destCnpj) destCnpj.addEventListener("input", () => { updatePreview(); saveLaudosState(); });
             const destAddress = document.getElementById("destAddress");
-            if (destAddress) destAddress.addEventListener("input", updatePreview);
+            if (destAddress) destAddress.addEventListener("input", () => { updatePreview(); saveLaudosState(); });
 
             // Actions Buttons
             const addRowBtn = document.getElementById("addRowBtn");
-            if (addRowBtn) addRowBtn.addEventListener("click", addNewRow);
+            if (addRowBtn) addRowBtn.addEventListener("click", () => { addNewRow(); saveLaudosState(); });
             const clearBtn = document.getElementById("clearBtn");
             if (clearBtn) clearBtn.addEventListener("click", clearAll);
+            const clearFilesBtn = document.getElementById("clearFilesBtn");
+            if (clearFilesBtn) clearFilesBtn.addEventListener("click", clearAllFiles);
             const generateBtn = document.getElementById("generateBtn");
             if (generateBtn) generateBtn.addEventListener("click", generateReport);
             const themeToggleBtn = document.getElementById("themeToggleBtn");
@@ -4151,6 +4182,7 @@
                     renderTable();
                     updatePreview();
                     toggleProgress(false);
+                    saveLaudosState();
 
                 } catch (error) {
                     console.error(error);
@@ -4204,6 +4236,7 @@
             renderTable();
             updatePreview();
             toggleProgress(false);
+            saveLaudosState();
         }
 
         // Text extraction using PDF.js
@@ -4277,6 +4310,7 @@
             if (uploadedFiles.length === 0) {
                 document.getElementById("filesTrackerCard").style.display = "none";
             }
+            saveLaudosState();
         }
 
         // Auto match uploaded files based on type and content
@@ -4337,6 +4371,7 @@
 
             renderTable();
             updatePreview();
+            saveLaudosState();
         }
 
         function removeRow(id) {
@@ -4347,6 +4382,7 @@
                 renderTable();
                 updatePreview();
             }
+            saveLaudosState();
         }
 
         function updateCell(id, field, value) {
@@ -4358,6 +4394,7 @@
                 if (field === 'nfEnvioFile' || field === 'nfDevolucaoFile' || field === 'ratFile') {
                     renderTable();
                 }
+                saveLaudosState();
             }
         }
 
@@ -4589,6 +4626,48 @@
 
                 renderTable();
                 updatePreview();
+                saveLaudosState();
+            }
+        }
+
+        function clearAllFiles() {
+            if (confirm("Tem certeza que deseja remover todos os arquivos carregados?")) {
+                uploadedFiles = [];
+                equipments.forEach(eq => {
+                    eq.nfEnvioFile = null;
+                    eq.nfDevolucaoFile = null;
+                    eq.ratFile = null;
+                });
+                
+                document.getElementById("fileExcel").value = "";
+                document.getElementById("fileNf").value = "";
+                document.getElementById("fileRat").value = "";
+                document.getElementById("fileEvidence").value = "";
+                
+                document.getElementById("filesTrackerCard").style.display = "none";
+                
+                updateFilesTracker();
+                renderTable();
+                updatePreview();
+                saveLaudosState();
+            }
+        }
+        
+        async function saveLaudosState() {
+            try {
+                const state = {
+                    operationType: document.getElementById("operationType")?.value || "doacao",
+                    laudoNumber: document.getElementById("laudoNumber")?.value || "",
+                    destName: document.getElementById("destName")?.value || "",
+                    destCnpj: document.getElementById("destCnpj")?.value || "",
+                    destAddress: document.getElementById("destAddress")?.value || "",
+                    equipments: equipments,
+                    uploadedFiles: uploadedFiles,
+                    nextEquipId: nextEquipId
+                };
+                await dbStore.save("laudos_state", "state", new Date().toISOString(), state);
+            } catch (e) {
+                console.error("Failed to save laudos state:", e);
             }
         }
 
