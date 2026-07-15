@@ -5402,7 +5402,7 @@
             
             try {
                 // 1. Get Login Page to fetch CSRF Token
-                const loginPageRes = await fetch(`${glpiUrl}/index.php`);
+                const loginPageRes = await fetch(`${glpiUrl}/index.php`, { credentials: 'include' });
                 if (!loginPageRes.ok) throw new Error("Não foi possível acessar a página de login do GLPI. Verifique se o CORS está ativo no seu navegador.");
                 const loginHtmlText = await loginPageRes.text();
                 
@@ -5434,14 +5434,15 @@
                     body: loginData,
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'
-                    }
+                    },
+                    credentials: 'include'
                 });
                 
                 if (!loginSubmitRes.ok) throw new Error("Erro ao submeter login no GLPI.");
                 
                 // Verify authentication
                 const testUrl = `${glpiUrl}/ajax/common.tabs.php?_glpi_tab=Ticket%24main&_target=%2Ffront%2Fticket.form.php&_itemtype=Ticket&id=${blankTickets[0]._id}`;
-                const testRes = await fetch(testUrl);
+                const testRes = await fetch(testUrl, { credentials: 'include' });
                 const testText = await testRes.text();
                 if (!testText.includes("actor-type")) {
                     throw new Error("Falha na autenticação do GLPI. Verifique suas credenciais de usuário/senha.");
@@ -5455,7 +5456,7 @@
                     
                     const ticketUrl = `${glpiUrl}/ajax/common.tabs.php?_glpi_tab=Ticket%24main&_target=%2Ffront%2Fticket.form.php&_itemtype=Ticket&id=${ticket._id}`;
                     try {
-                        const res = await fetch(ticketUrl);
+                        const res = await fetch(ticketUrl, { credentials: 'include' });
                         const htmlText = await res.text();
                         const ticketDoc = parser.parseFromString(htmlText, 'text/html');
                         
