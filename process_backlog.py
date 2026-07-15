@@ -13,7 +13,11 @@ CSV_PATH = "backlog.csv"
 def clean(val):
     if val is None:
         return ""
-    return str(val).replace('\ufeff', '').replace('"', '').replace("'", '').strip()
+    s = str(val).strip()
+    s = s.replace('\ufeff', '')
+    s = s.replace('\xef\xbb\xbf', '')
+    s = s.replace('"', '').replace("'", '')
+    return s.strip()
 
 def main():
     global CSV_PATH
@@ -108,7 +112,7 @@ def main():
     
     for encoding in encodings:
         try:
-            with open(CSV_PATH, mode='r', encoding=encoding) as f:
+            with open(CSV_PATH, mode='r', encoding=encoding, errors='replace') as f:
                 reader = csv.reader(f, delimiter=';')
                 headers = next(reader)
                 rows = list(reader)
