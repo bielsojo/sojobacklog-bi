@@ -13,7 +13,7 @@ CSV_PATH = "backlog.csv"
 def clean(val):
     if val is None:
         return ""
-    return str(val).strip()
+    return str(val).replace('\ufeff', '').replace('"', '').replace("'", '').strip()
 
 def main():
     global CSV_PATH
@@ -130,7 +130,7 @@ def main():
         h_clean = clean(h).lower()
         if h_clean == 'id':
             id_col = i
-        elif 'atribu' in h_clean and ('tecnico' in h_clean or 't' in h_clean) or 'atendente' in h_clean:
+        elif 'atribu' in h_clean or 'atend' in h_clean:
             tech_col = i
             
     if id_col == -1:
