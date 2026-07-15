@@ -5504,12 +5504,20 @@
                 
                 if (!loginSubmitRes.ok) throw new Error("Erro ao submeter login no GLPI.");
                 
+                const loginHtml = await loginSubmitRes.text();
+                if (loginHtml.includes('login_password') || loginHtml.includes('login_name') || loginHtml.includes('incorret') || loginHtml.includes('inválid') || loginHtml.includes('incorrect') || loginHtml.includes('invalid')) {
+                    throw new Error("Usuário ou senha incorretos no GLPI. Verifique os dados inseridos.");
+                }
+                
                 // Verify authentication
                 const testUrl = `${glpiUrl}/ajax/common.tabs.php?_glpi_tab=Ticket%24main&_target=%2Ffront%2Fticket.form.php&_itemtype=Ticket&id=${blankTickets[0]._id}`;
                 const testRes = await fetch(testUrl, { credentials: 'include' });
                 const testText = await testRes.text();
                 if (!testText.includes("actor-type")) {
-                    throw new Error("Falha na autenticação do GLPI. Verifique suas credenciais de usuário/senha.");
+                    if (testText.includes('login_password') || testText.includes('login_name')) {
+                        throw new Error("Erro de Sessão: O navegador autenticou com sucesso, mas recusou-se a enviar os cookies de sessão nas requisições seguintes por conta das regras de segurança de cookies 'SameSite' do Chrome. Como o site está rodando em 'bielsojo.github.io' (outro domínio), o Chrome bloqueia a sessão. Para que o login funcione 100% web, você deve desativar a proteção de SameSite ou usar um navegador alternativo.");
+                    }
+                    throw new Error("Falha na verificação de autenticação do GLPI.");
                 }
                 
                 // 3. Process tickets
