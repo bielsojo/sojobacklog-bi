@@ -5366,10 +5366,72 @@
             }
         }
 
+        function promptGLPICredentials() {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.style.position = 'fixed';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.width = '100vw';
+                overlay.style.height = '100vh';
+                overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+                overlay.style.backdropFilter = 'blur(4px)';
+                overlay.style.display = 'flex';
+                overlay.style.alignItems = 'center';
+                overlay.style.justifyContent = 'center';
+                overlay.style.zIndex = '9999';
+                
+                const card = document.createElement('div');
+                card.style.backgroundColor = 'var(--bg-card)';
+                card.style.border = '1px solid var(--border)';
+                card.style.borderRadius = '12px';
+                card.style.padding = '24px';
+                card.style.width = '360px';
+                card.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.4)';
+                card.style.color = 'var(--text-main)';
+                card.style.fontFamily = 'Inter, sans-serif';
+                
+                card.innerHTML = `
+                    <h3 style="margin-top:0;margin-bottom:16px;font-size:18px;display:flex;align-items:center;gap:8px;">🔑 Login GLPI</h3>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">Insira suas credenciais do GLPI para sincronizar os técnicos em aberto.</p>
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block;font-size:12px;margin-bottom:4px;color:var(--text-secondary)">Usuário</label>
+                        <input type="text" id="glpi-user" value="gabriel.sojo" style="width:100%;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-body);color:var(--text-main);font-size:14px;box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:20px;">
+                        <label style="display:block;font-size:12px;margin-bottom:4px;color:var(--text-secondary)">Senha</label>
+                        <input type="password" id="glpi-pass" value="Dorinh@001" style="width:100%;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-body);color:var(--text-main);font-size:14px;box-sizing:border-box;">
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;gap:8px;">
+                        <button id="glpi-cancel" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-secondary);cursor:pointer;font-size:13px;">Cancelar</button>
+                        <button id="glpi-login" style="padding:8px 16px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:13px;font-weight:600;">Entrar e Sincronizar</button>
+                    </div>
+                `;
+                
+                overlay.appendChild(card);
+                document.body.appendChild(overlay);
+                
+                document.getElementById('glpi-cancel').onclick = () => {
+                    document.body.removeChild(overlay);
+                    resolve(null);
+                };
+                
+                document.getElementById('glpi-login').onclick = () => {
+                    const user = document.getElementById('glpi-user').value.trim();
+                    const pass = document.getElementById('glpi-pass').value;
+                    document.body.removeChild(overlay);
+                    if (!user || !pass) {
+                        alert("Usuário e senha são obrigatórios!");
+                        resolve(null);
+                    } else {
+                        resolve({ user, pass });
+                    }
+                };
+            });
+        }
+
         async function syncGLPITechnicians() {
             const glpiUrl = "https://lcdesk.lowcost.com.br";
-            const username = "gabriel.sojo";
-            const password = "Dorinh@001";
             
             // Find tickets in RAW_DATA where technician is blank
             const blankTickets = RAW_DATA.filter(r => !r._tech || r._tech.trim() === "");
@@ -5378,9 +5440,11 @@
                 return;
             }
             
-            if (!confirm(`Deseja sincronizar atribuições para ${blankTickets.length} chamados com técnico em branco consultando diretamente o GLPI?`)) {
-                return;
-            }
+            const creds = await promptGLPICredentials();
+            if (!creds) return;
+            
+            const username = creds.user;
+            const password = creds.pass;
             
             const loadingScreen = document.getElementById('loading-screen');
             const loadingText = loadingScreen ? loadingScreen.querySelector('.loading-text') : null;
